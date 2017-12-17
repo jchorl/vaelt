@@ -1,0 +1,20 @@
+runtime: go
+version: 1
+api_version: go1
+
+handlers:
+- url: /api/.*
+  script: _go_app
+  secure: always
+- url: .*
+  static_files: ui/build/index.html
+  upload: ui/build/index.html
+  secure: always
+
+skip_files:
+- ^(.*/)?\.DS_Store$
+- ^.git/(.*)
+- ^ui/node_modules
+- ^ui/package.json
+- ^ui/src
+- ^ui/public
