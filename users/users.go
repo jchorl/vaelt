@@ -1,6 +1,7 @@
 package users
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/appengine/log"
 
 	"github.com/jchorl/passwords/vault"
+	"github.com/labstack/echo"
 )
 
 const (
@@ -22,18 +24,18 @@ type User struct {
 	Password *datastore.Key
 }
 
-func init() {
-	http.HandleFunc("/api/users/register", register)
+// RegisterHandlers registers handlers on an echo Group
+func RegisterHandlers(g *echo.Group) {
+	g.POST("/register", registerHandler)
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r)
+func registerHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
 
-	email, password, ok := r.BasicAuth()
+	email, password, ok := c.Request().BasicAuth()
 	if !ok {
-		log.Errorf(ctx, "Unable to get auth info from request")
-		http.Error(w, "Unable to get auth info from request", http.StatusBadRequest)
-		return
+		err := errors.New("Unable to get auth info from request")
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// check if the user exists already
@@ -43,12 +45,11 @@ func register(w http.ResponseWriter, r *http.Request) {
 	keys, err := query.GetAll(ctx, nil)
 	if err != nil {
 		log.Errorf(ctx, "Failed to check if user exists")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	if len(keys) > 0 {
-		http.Error(w, fmt.Sprintf("Email %s already has an account", email), http.StatusBadRequest)
-		return
+		err := fmt.Errorf("Email %s already has an account", email)
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// make a full key for a user
@@ -56,8 +57,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Errorf(ctx, "Unable to hash password")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// save the password in vault
@@ -67,9 +67,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 	passwordKey, err := vault.Put(ctx, entry, userKey)
 	if err != nil {
-		log.Errorf(ctx, "Unable to store user's password")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// set the password and save the user
@@ -80,7 +78,38 @@ func register(w http.ResponseWriter, r *http.Request) {
 	_, err = datastore.Put(ctx, userKey, user)
 	if err != nil {
 		log.Errorf(ctx, "Unable to store the user")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
+
+	return c.NoContent(http.StatusCreated)
+}
+
+// AuthUser auths a user and returns their user key
+func AuthUser(email, password string, req *http.Request) (*datastore.Key, error) {
+	ctx := appengine.NewContext(req)
+
+	var results []User
+	query := datastore.NewQuery(userEntityType).
+		Filter("Email =", email)
+	keys, err := query.GetAll(ctx, &results)
+	if err != nil {
+		log.Errorf(ctx, "Failed to check if user exists")
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	u := results[0]
+	passwordEntry, err := vault.Get(ctx, u.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bcrypt.CompareHashAndPassword(passwordEntry.EncryptedMessage, []byte(password))
+	if err != nil {
+		return nil, nil
+	}
+
+	return keys[0], nil
 }
