@@ -2,6 +2,53 @@ import React, { Component } from 'react';
 import './App.css';
 
 let cryptogram;
+let sequence = 0;
+
+function uint8arrayToHexString(uint8array) {
+    let strArr = [];
+    let str = '';
+    for (let i = 0; i < uint8array.length; ++i) {
+        if (i % 16 === 0 && i > 0) {
+            strArr.push(str);
+            str = '';
+        } else if (i % 8 === 0 && i > 0) {
+            str += ' ';
+        }
+        if (i % 16 > 0) {
+            str += ' ';
+        }
+        let numStr = uint8array[i].toString(16);
+        if (numStr.length === 1) {
+            numStr = '0' + numStr;
+        }
+        str += numStr;
+    }
+    strArr.push(str);
+    return strArr;
+}
+
+function arrayToHexString(arr) {
+    let strArr = [];
+    let str = '';
+    for (let i = 0; i < arr.byteLength; ++i) {
+        if (i % 16 === 0 && i > 0) {
+            strArr.push(str);
+            str = '';
+        } else if (i % 8 === 0 && i > 0) {
+            str += ' ';
+        }
+        if (i % 16 > 0) {
+            str += ' ';
+        }
+        let numStr = arr.getUint8(i).toString(16);
+        if (numStr.length === 1) {
+            numStr = '0' + numStr;
+        }
+        str += numStr;
+    }
+    strArr.push(str);
+    return strArr;
+}
 
 function getPublicKey() {
     let device;
@@ -14,7 +61,7 @@ function getPublicKey() {
         .then(() => device.claimInterface(2))
 
         // icc power on
-        .then(() => device.transferOut(0x02, Uint8Array.from([0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])))
+        .then(() => device.transferOut(0x02, Uint8Array.from([0x62, 0x00, 0x00, 0x00, 0x00, 0x00, sequence++, 0x00, 0x00, 0x00])))
         .then(() => device.transferIn(0x02, 100))
         .then(resp => {
             // check that byte 8 is 00 meaning no error
@@ -24,7 +71,7 @@ function getPublicKey() {
         })
 
         // get parameters
-        .then(() => device.transferOut(0x02, Uint8Array.from([0x6C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00])))
+        .then(() => device.transferOut(0x02, Uint8Array.from([0x6C, 0x00, 0x00, 0x00, 0x00, 0x00, sequence++, 0x00, 0x00, 0x00])))
         .then(() => device.transferIn(0x02, 100))
         .then(resp => {
             // check that byte 8 is 00 meaning no error
@@ -42,7 +89,7 @@ function getPublicKey() {
 
         // set parameters (I have no idea what the parameters mean but whatever, it works)
         // I think this sets protocol T=1
-        .then(() => device.transferOut(0x02, Uint8Array.from([0x61, 0x07, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x00, 0x00, 0x11, 0x10, 0x00, 0x15, 0x00, 0xFE, 0x00])))
+        .then(() => device.transferOut(0x02, Uint8Array.from([0x61, 0x07, 0x00, 0x00, 0x00, 0x00, sequence++, 0x01, 0x00, 0x00, 0x11, 0x10, 0x00, 0x15, 0x00, 0xFE, 0x00])))
         .then(() => device.transferIn(0x02, 100))
         .then(resp => {
             // check that byte 8 is 00 meaning no error
@@ -60,7 +107,7 @@ function getPublicKey() {
             index: 0x0002 // interface 2
         }, Uint8Array.from([])))
 
-        .then(() => device.transferOut(0x02, Uint8Array.from([0x6F, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x04, 0x04, 0x00, 0x00,
+        .then(() => device.transferOut(0x02, Uint8Array.from([0x6F, 0x0B, 0x00, 0x00, 0x00, 0x00, sequence++, 0x04, 0x00, 0x00,
             // adpu SELECT FILE
             0x00, 0xA4,
             // Direct selection by DF name
@@ -79,10 +126,14 @@ function getPublicKey() {
                 throw new Error('Unable to select file');
             }
 
-            // the data returned is 90 00
-            // this might just mean okay!
+
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                debugger;
+                throw new Error('Unable to verify pin');
+            }
         })
-        .then(() => device.transferOut(0x02, Uint8Array.from([0x6F, 0x05, 0x00, 0x00, 0x00, 0x00, 0x11, 0x04, 0x00, 0x00,
+        .then(() => device.transferOut(0x02, Uint8Array.from([0x6F, 0x05, 0x00, 0x00, 0x00, 0x00, sequence++, 0x04, 0x00, 0x00,
             0x00,
             // GET DATA
             0xCA,
@@ -106,10 +157,10 @@ function getPublicKey() {
             debugger;
         });
 }
-function decrypt() {
+async function decrypt() {
     let device;
     let pin = '123456';
-    navigator.usb.requestDevice({ filters: [{ vendorId: 0x1050 }] })
+    await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1050 }] })
         .then(selectedDevice => {
             device = selectedDevice;
             return device.open(); // Begin a session.
@@ -126,7 +177,7 @@ function decrypt() {
                 // slot
                 0x00,
                 // sequence
-                0x00,
+                sequence++,
                 // timeout
                 0x00,
                 // level
@@ -153,12 +204,12 @@ function decrypt() {
         .then(resp => {
             // check that byte 8 is 00 meaning no error
             if (resp.data.getUint8(7) !== 0) {
-                throw new Error('Unable to verify pin');
+                throw new Error('Pin verification returned error status');
             }
 
             // check for the 90 00 return
             if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
-                throw new Error('Unable to verify pin');
+                throw new Error('Pin verification did not return 90 00');
             }
         })
         .then(() => {
@@ -170,7 +221,7 @@ function decrypt() {
                 // slot
                 0x00,
                 // seq
-                0x01,
+                sequence++,
                 // timeout
                 0x00,
                 // level
@@ -194,12 +245,14 @@ function decrypt() {
         .then(resp => {
             // check that byte 8 is 00 meaning no error
             if (resp.data.getUint8(7) !== 0) {
-                throw new Error('Unable to verify pin');
+                debugger;
+                throw new Error('Second pin verification returned error status');
             }
 
             // check for the 90 00 return
             if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
-                throw new Error('Unable to verify pin');
+                debugger;
+                throw new Error('Second pin verification did not return 90 00');
             }
         })
         // for now, just support 256 byte cryptograms so we don't have to loop and send variable number of messages
@@ -212,7 +265,7 @@ function decrypt() {
                 // slot 0
                 0x00,
                 // sequence
-                0x02,
+                sequence++,
                 // timeout
                 0x00,
                 // level
@@ -233,6 +286,7 @@ function decrypt() {
                 payload.push(cryptogram[i]);
             }
             device.transferOut(0x02, Uint8Array.from(payload))
+            console.log(uint8arrayToHexString(payload));
         })
         .then(() => device.transferIn(0x02, 65556))
         .then(resp => {
@@ -254,7 +308,7 @@ function decrypt() {
                 0x09, 0x00, 0x00, 0x00,
                 0x00,
                 // seq
-                0x02,
+                sequence++,
                 0x00, 0x00, 0x00,
                 // apdu stuff
                 0x00,
@@ -269,17 +323,31 @@ function decrypt() {
             // terminating 0
             payload.push(0);
             device.transferOut(0x02, Uint8Array.from(payload))
+            console.log(uint8arrayToHexString(payload));
         })
-        // TODO poll for results and then pull in the DEK
         .catch(error => {
             alert('Error decrypting');
             debugger;
         });
+    // TODO debug the decrypt and then figure out polling
+    // start polling
+    for (let j = 0; j < 20; ++j) {
+        try {
+            let resp = await device.transferIn(0x02, 65556);
+            console.log('length: ' + resp.data.byteLength);
+            console.log(arrayToHexString(resp.data));
+            console.log('sleeping');
+            await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (e) {
+            alert('Caught exception waiting for key');
+            console.log(e);
+            break;
+        }
+    }
 }
 
 class App extends Component {
     readFile = e => {
-        let comp = this;
         let file = e.target.files[0];
         let reader = new FileReader();
         reader.onload = function(e) {
@@ -294,8 +362,9 @@ class App extends Component {
     render() {
         return (
             <div className="App">
-                <button onClick={ decrypt }>USB</button>
+                <button onClick={ getPublicKey }>Get public key</button>
                 <input type="file" onChange={ this.readFile } />
+                <button onClick={ decrypt }>Decrypt</button>
             </div>
             );
     }
