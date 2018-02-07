@@ -35,7 +35,7 @@ https://www.gnupg.org/gph/en/manual/x110.html
 
 Using Wireshark in docker for usb traffic:
 On host, sudo modprobe usbmon
-docker run -ti --net=host --privileged -v $HOME:/root:ro -e XAUTHORITY=/root/.Xauthority -e DISPLAY=$DISPLAY manell/wireshark bash
+docker run -ti --rm --net=host --privileged -v $HOME:/root:ro -e XAUTHORITY=/root/.Xauthority -e DISPLAY=$DISPLAY manell/wireshark bash
 apt-get update; apt-get install -y usbutils
 wireshark
 capture traffic
@@ -74,3 +74,62 @@ After a few greps, I grepped for URL and found "{ "URL",      "OPENPGP_URL",    
 Wait, 5F50 looks very familiar, that was in the read command!!
 Googling brought me to the openpgp spec https://gnupg.org/ftp/specs/openpgp-card-1.1.pdf
 AH! 5F50 specifies to fetch the public URL. No BER-TLV after all (well not yet)
+
+
+
+
+
+For decrypting, I wiresharked a decrypt
+pcscd --foreground --debug --apdu --color > dec.log &
+gpg2 --card-edit
+fetch
+gpg2 --encrypt --recipient jchorlton@gmail.com --output jac.gpg <(echo 'joshchorltonjoshchorltonjoshchorlton')
+gpg2 --debug-all --output jac --decrypt jac.gpg
+// new versions of gpg need --pinentry-mode loopback
+I finally set up filters: usb.transfer_type!=0x01 && usb.data_len!=0
+
+
+This proved to be quite unhelpful, I have no idea how to interpret the data coming back. I spent forever on this.
+It looks like encrypted, compressed packets: https://tools.ietf.org/html/rfc4880#section-5.13
+
+The device responds with the data encryption key
+
+Alright, we're gdbing. Took a while to even set up an ubuntu image to compile gpg. But I docker committed it.
+docker run -it --rm --privileged jchorl/gpgdebug
+pcscd
+gpg --card-edit
+fetch
+n
+gpg --encrypt --recipient jchorlton@gmail.com --output jac.gpg <(echo 'joshchorltonjoshchorltonjoshchorlton')
+gdb -tui gpg
+set args --pinentry-mode loopback --output jac --decrypt jac.gpg
+b g10/pubkey-enc.c:get_it
+run
+
+
+
+
+ok so the 111 byte message maps to buf in agent_pkdecrypt in call-agent.c
+somehow ed becomes -19
+ed = 11101101
+19 = 00010011
+theyre 2s compliment!!
+okay, so now we know where buf comes from. now what happens next?
+
+dek algo is the first byte, 9 in this case. thats CIPHER_ALGO_AES256!!!
+the keylen is 32 (even though 35 bytes were returned)
+the first is the algo, and the last 2 are the checksum
+checksum is calculated as a u16, just adding all the key chars to it (find csum != csum2)
+then the public key is checked for expiration or something
+
+looks like were processing in proc_encrypted in mainproc.c
+mainproc.c line 644 decrypt_data
+
+apparently aes256 block size is 16 bytes (128 bit)
+mdc (modification detection code) method is 2
+looks like theres some meat happening at g10/decrypt-data.c:159
+it appears to be CFB, AES256, 128 bit block size, with the DEK as the key, with no IV
+
+I still dont know how they got a length of 87 in ed in decrypt-data.c:194
+
+For some reason, they start reading the ciphertext at character 276, reading 18 chars
