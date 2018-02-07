@@ -286,7 +286,6 @@ async function decrypt() {
                 payload.push(cryptogram[i]);
             }
             device.transferOut(0x02, Uint8Array.from(payload))
-            console.log(uint8arrayToHexString(payload));
         })
         .then(() => device.transferIn(0x02, 65556))
         .then(resp => {
@@ -323,20 +322,23 @@ async function decrypt() {
             // terminating 0
             payload.push(0);
             device.transferOut(0x02, Uint8Array.from(payload))
-            console.log(uint8arrayToHexString(payload));
         })
         .catch(error => {
             alert('Error decrypting');
             debugger;
         });
-    // TODO debug the decrypt and then figure out polling
+
     // start polling
+    // REMINDER TO TAP THE YUBIKEY
+    let key;
     for (let j = 0; j < 20; ++j) {
         try {
             let resp = await device.transferIn(0x02, 65556);
-            console.log('length: ' + resp.data.byteLength);
-            console.log(arrayToHexString(resp.data));
-            console.log('sleeping');
+            if (resp.data.getUint8(resp.data.byteLength - 2) === 0x90 && resp.data.getUint8(resp.data.byteLength - 1) === 0) {
+                console.log('found the key');
+                key = new Int8Array(resp.data.buffer.slice(11, resp.data.byteLength - 2));
+                break;
+            }
             await new Promise(resolve => setTimeout(resolve, 500));
         } catch (e) {
             alert('Caught exception waiting for key');
