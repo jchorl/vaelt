@@ -1,3 +1,5 @@
+import sys
+
 # this only works with python 2.7
 from pcapng import FileScanner
 from pcapng.blocks import SectionHeader, InterfaceDescription, InterfaceStatistics
@@ -29,7 +31,7 @@ def byte_array_str(barr):
     return s
 
 # magic starts here
-with open('capture.pcapng') as fp:
+with open(sys.argv[1]) as fp:
     scanner = FileScanner(fp)
     for block in scanner:
         if isinstance(block, SectionHeader):
