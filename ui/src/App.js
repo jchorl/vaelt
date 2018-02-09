@@ -3,6 +3,7 @@ import './App.css';
 
 let cryptogram;
 let sequence = 0;
+let key;
 
 function uint8arrayToHexString(uint8array) {
     let strArr = [];
@@ -157,7 +158,7 @@ function getPublicKey() {
             debugger;
         });
 }
-async function decrypt() {
+async function getDecryptionKey() {
     let device;
     let pin = '123456';
     await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1050 }] })
@@ -330,13 +331,16 @@ async function decrypt() {
 
     // start polling
     // REMINDER TO TAP THE YUBIKEY
-    let key;
+    console.log('TAP DAT KEY');
     for (let j = 0; j < 20; ++j) {
         try {
             let resp = await device.transferIn(0x02, 65556);
             if (resp.data.getUint8(resp.data.byteLength - 2) === 0x90 && resp.data.getUint8(resp.data.byteLength - 1) === 0) {
                 console.log('found the key');
-                key = new Int8Array(resp.data.buffer.slice(11, resp.data.byteLength - 2));
+                // TODO change the format depending on what the crypto lib accepts
+                // from index 11, to the end - 2 (0x90 0x00)
+                // the key also has some verification digits on the end (maybe this is mdc, idk. but its 2 bytes)
+                key = new Uint8Array(resp.data.buffer, 11, resp.data.byteLength - 2 - 11 - 2);
                 break;
             }
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -348,12 +352,18 @@ async function decrypt() {
     }
 }
 
+function decrypt() {
+    console.log(uint8arrayToHexString(key));
+    console.log(uint8arrayToHexString(cryptogram));
+}
+
 class App extends Component {
     readFile = e => {
         let file = e.target.files[0];
         let reader = new FileReader();
         reader.onload = function(e) {
             let arrayBuffer = reader.result;
+            debugger;
             // index 14 is the length, the start of the cryptogram
             // but we always send 256 bytes
             cryptogram = new Uint8Array(arrayBuffer, 14, 257);
@@ -366,6 +376,7 @@ class App extends Component {
             <div className="App">
                 <button onClick={ getPublicKey }>Get public key</button>
                 <input type="file" onChange={ this.readFile } />
+                <button onClick={ getDecryptionKey }>Get decryption key</button>
                 <button onClick={ decrypt }>Decrypt</button>
             </div>
             );
