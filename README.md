@@ -106,9 +106,6 @@ set args --pinentry-mode loopback --output jac --decrypt jac.gpg
 b g10/pubkey-enc.c:get_it
 run
 
-
-
-
 ok so the 111 byte message maps to buf in agent_pkdecrypt in call-agent.c
 somehow ed becomes -19
 ed = 11101101
@@ -133,3 +130,27 @@ it appears to be CFB, AES256, 128 bit block size, with the DEK as the key, with 
 I still dont know how they got a length of 87 in ed in decrypt-data.c:194
 
 For some reason, they start reading the ciphertext at character 276, reading 18 chars
+
+gpg2 --list-packets encrypted.gpg solves literally everything
+Explanation: https://security.stackexchange.com/a/144555
+
+Lets figure out our encrypted packets (https://www.ietf.org/rfc/rfc1991.txt section 6.5)
+10 - normal CTB
+0001 - public key encrypted packet
+01 - 2 byte packet length field
+85 - 10000101
+
+packet length packets
+010c - so this packet is 268 in length
+
+03 - version 3 packet format
+
+6cbf d96b 5600 155e - id of the key
+
+01 - RSA
+
+07 - I have no idea what this is
+
+fe - length
+
+...packets

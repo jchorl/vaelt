@@ -26,7 +26,9 @@ ui-dev:
 		-u $(UID):$(GID) \
 		-p 3000:3000 \
 		node \
-		yarn start
+		sh -c "yarn install \
+		&& cp node_modules/openpgp/dist/* public/ \
+		&& yarn start" # openpgpjs loads file over the network
 
 node:
 	docker container run --rm -it \
