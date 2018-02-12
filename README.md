@@ -2,16 +2,12 @@ Chrome needs permissions to interact with the usb device:
 sudo vim /etc/udev/rules.d/70-u2f.rules
 SUBSYSTEM=="usb", ATTRS{idVendor}=="1050", MODE="0664", GROUP="plugdev"
 
-Generating keys and getting them onto the device:
-Build the docker image
-Generate keys
-https://www.yubico.com/support/knowledge-base/categories/articles/use-yubikey-openpgp/#generateopenpgp
-make sure to choose to save the encryption key
-gpg2 --list-keys
-gpg2 --keyserver hkp://pool.sks-keyservers.net --send-key <PUB_KEY_ID>
-gpg2 --card-edit
-admin
-url
+Setting up yubikey:
+docker run -it --rm --privileged yubikey
+Follow this https://github.com/drduh/YubiKey-Guide
+Use --full-gen-key instead of generate
+Use gpg2
+gpg2 --keyserver hkp://pool.sks-keyservers.net --send-key $KEYID
 go to http://hkps.pool.sks-keyservers.net/ and search for your key id
 click on the key id
 use that url (e.g. http://hkps.pool.sks-keyservers.net/pks/lookup?op=get&search=0x40CAB1E55AD06662)
@@ -26,6 +22,7 @@ export LANG=C.UTF-8
 ykman openpgp touch aut fixed
 ykman openpgp touch enc fixed
 ykman openpgp touch sig fixed
+None of that actually worked, had to manually yolo install from https://developers.yubico.com/yubikey-manager/Releases/
 
 Test it:
 docker run -it --rm --privileged jac/gpg

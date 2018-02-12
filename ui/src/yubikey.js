@@ -60,7 +60,7 @@ export function getPublicKey() {
         .then(resp => {
             // check for the 90 00 return
             if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
-                throw new Error('Unable to verify pin');
+                throw new Error('Unable to select file');
             }
         })
         .then(() => device.transferOut(0x02, Uint8Array.from([0x6F, 0x05, 0x00, 0x00, 0x00, 0x00, sequence++, 0x04, 0x00, 0x00,
@@ -96,9 +96,8 @@ export function getPublicKey() {
         });
 }
 
-export async function getDecryptionKey() {
+export async function getDecryptionKey(pin) {
     let device;
-    let pin = '123456';
     let ciphertext = message.readArmored(armoredCiphertext);
 
     // the key id is in the ciphertext but does not get sent to the yubikey
@@ -115,8 +114,8 @@ export async function getDecryptionKey() {
             let xfrBlock = [
                 // XfrBlock
                 0x6F,
-                // length 11
-                0x0B, 0x00, 0x00, 0x00,
+                // length - this won't work for VERY long pins (>240 chars or something)
+                pin.length + 5, 0x00, 0x00, 0x00,
                 // slot
                 0x00,
                 // sequence
@@ -152,8 +151,8 @@ export async function getDecryptionKey() {
             let xfrBlock = [
                 // XfrBlock
                 0x6F,
-                // length - 11
-                0x0B, 0x00, 0x00, 0x00,
+                // length - this won't work for VERY long pins (>240 chars or something)
+                pin.length + 5, 0x00, 0x00, 0x00,
                 // slot
                 0x00,
                 // seq
@@ -182,7 +181,7 @@ export async function getDecryptionKey() {
                 throw new Error('Second pin verification did not return 90 00');
             }
         })
-        // for now, just support 256 byte cryptograms so we don't have to loop and send variable number of messages
+        // for now, just support 512 byte cryptograms so we don't have to loop and send variable number of messages
         .then(() => {
             let payload = [
                 // XfrBlock
@@ -225,8 +224,43 @@ export async function getDecryptionKey() {
             let payload = [
                 // XfrBlock
                 0x6F,
-                // size 9
-                0x09, 0x00, 0x00, 0x00,
+                // size 259
+                0x03, 0x01, 0x00, 0x00,
+                // slot 0
+                0x00,
+                // sequence
+                sequence++,
+                // timeout
+                0x00,
+                // level
+                0x00, 0x00,
+                // apdu data
+                // were using chaining - check gnupg-2.2.4/scd/apdu.c#2757 and https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.4
+                // this is not the last byte of the chain
+                0x10,
+                // this is a decipher https://github.com/Yubico/ykneo-openpgp/blob/1.0.11/applet/src/openpgpcard/OpenPGPApplet.java#L640
+                // also https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.1 and 7.2.9
+                0x2A, 0x80, 0x86,
+                // the length packet is always 0xfe for some reason
+                0xFE,
+            ];
+
+            payload = payload.concat(Array.from(ciphertextPackets.slice(0xFE, 2*0xFE)));
+            device.transferOut(0x02, Uint8Array.from(payload));
+        })
+        .then(() => device.transferIn(0x02, 65556))
+        .then(resp => {
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                throw new Error('Unable to push cryptogram');
+            }
+        })
+        .then(() => {
+            let payload = [
+                // XfrBlock
+                0x6F,
+                // size - 6 + remaining chars
+                ciphertextPackets.byteLength - 2*0xFE + 6, 0x00, 0x00, 0x00,
                 0x00,
                 // seq
                 sequence++,
@@ -234,12 +268,12 @@ export async function getDecryptionKey() {
                 // apdu stuff
                 0x00,
                 0x2A, 0x80, 0x86,
-                // remaining packets - always 3
-                3,
+                // remaining packets
+                ciphertextPackets.byteLength - 2*0xFE,
             ];
             // this will break for longer cryptograms :(
             // send the rest of the ciphertext
-            payload = payload.concat(Array.from(ciphertextPackets.slice(0xFE)));
+            payload = payload.concat(Array.from(ciphertextPackets.slice(2*0xFE)));
             // terminating 0
             payload.push(0);
             device.transferOut(0x02, Uint8Array.from(payload));
