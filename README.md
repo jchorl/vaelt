@@ -30,6 +30,11 @@ gpg2 --card-edit
 fetch
 https://www.gnupg.org/gph/en/manual/x110.html
 
+IMPORTANT RESOURCES
+http://www.usb.org/developers/docs/devclass_docs/DWG_Smart-Card_CCID_Rev110.pdf
+https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.1.pdf
+http://cardwerk.com/smart-card-standard-iso7816-4-section-6-basic-interindustry-commands/
+
 Using Wireshark in docker for usb traffic:
 On host, sudo modprobe usbmon
 docker run -ti --rm --net=host --privileged -v $HOME:/root:ro -e XAUTHORITY=/root/.Xauthority -e DISPLAY=$DISPLAY manell/wireshark bash
