@@ -9,26 +9,25 @@ deploy:
 		sh -c "go get ./... && python /usr/lib/google-cloud-sdk/platform/google_appengine/appcfg.py -A passwordsjc --noauth_local_webserver update ."
 
 devserverbuild:
-	docker build -t jac/gclouddev -f devserver.Dockerfile .
+	docker build -t jchorl/gclouddev -f devserver.Dockerfile .
 
 devserve:
 	docker container run --rm -it \
 		-v $(PWD):/root/go/src/github.com/jchorl/passwords \
 		-w /root/go/src/github.com/jchorl/passwords \
-		-p 8080:8080 \
-		-p 8000:8000 \
-		jac/gclouddev
+		--net=host \
+		jchorl/gclouddev
 
 ui-dev:
 	docker container run --rm -it \
 		-v $(PWD)/ui:/usr/src/app \
 		-w /usr/src/app \
 		-u $(UID):$(GID) \
-		-p 3000:3000 \
+		--net=host \
 		node \
 		sh -c "yarn install \
 		&& cp node_modules/openpgp/dist/* public/ \
-		&& yarn start" # openpgpjs loads file over the network
+		&& HTTPS=true yarn start" # openpgpjs loads file over the network
 
 node:
 	docker container run --rm -it \

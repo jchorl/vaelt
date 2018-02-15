@@ -9,7 +9,7 @@ import (
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"github.com/jchorl/passwords/util"
+	"util"
 )
 
 const (

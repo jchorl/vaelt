@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"github.com/jchorl/passwords/util"
-	"github.com/jchorl/passwords/vault"
+	"util"
+	"vault"
 )
 
 const (
@@ -21,8 +22,8 @@ const (
 
 // User represents a registered user
 type User struct {
-	Email    string
-	Password *datastore.Key
+	Email    string         `json:"email"`
+	Password *datastore.Key `json:"-"`
 }
 
 // RegisterHandler registers a new user
@@ -77,12 +78,21 @@ func RegisterHandler(c echo.Context) error {
 		Email:    email,
 		Password: passwordKey,
 	}
-	_, err = datastore.Put(ctx, userKey, user)
+	userKey, err = datastore.Put(ctx, userKey, &user)
 	if err != nil {
 		log.Errorf(ctx, "Unable to store the user")
 		return err
 	}
 
+	// set the userkey in the session
+	// some of this uses hardcoded values because auth cannot be imported :(
+	sess := c.Get("session").(*sessions.Session)
+	sess.Values["userKey"] = userKey.Encode()
+	sess.Values["scope"] = "WRITE"
+	err = sess.Save(c.Request(), c.Response())
+	if err != nil {
+		log.Errorf(ctx, "Unable to save the sess: %+v", err)
+	}
 	return c.NoContent(http.StatusCreated)
 }
 

@@ -8,9 +8,9 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 
-	"github.com/jchorl/passwords/secrets"
-	"github.com/jchorl/passwords/users"
-	"github.com/jchorl/passwords/util"
+	"secrets"
+	"users"
+	"util"
 )
 
 /*
@@ -33,22 +33,27 @@ const (
 	// ScopeWrite marks a user as having permission to write to their data
 	ScopeWrite = "WRITE"
 
-	sessionMaxAgeSeconds = 10 * 60
 	sessionName          = "session"
+	defaultMaxAgeSeconds = 10 * 60
+)
+
+var (
+	// SessionsMiddleware is the middleware to create sessions before every req
+	SessionsMiddleware = session.MiddlewareWithConfig(sessionsMiddlewareConfig)
 )
 
 // AuthReadMiddlewares are the middlewares used to auth a read request
 var AuthReadMiddlewares = []echo.MiddlewareFunc{
-	session.MiddlewareWithConfig(sessionsMiddlewareConfig),
-	sessionProcessingMiddleware,
+	SessionsMiddleware,
+	SessionProcessingMiddleware,
 	basicAuthMiddleware,
 	readAuthCheckMiddleware,
 }
 
 // AuthWriteMiddlewares are the middlewares used to auth a write request
 var AuthWriteMiddlewares = []echo.MiddlewareFunc{
-	session.MiddlewareWithConfig(sessionsMiddlewareConfig),
-	sessionProcessingMiddleware,
+	SessionsMiddleware,
+	SessionProcessingMiddleware,
 	basicAuthMiddleware,
 	writeAuthCheckMiddleware,
 }
@@ -58,20 +63,20 @@ var sessionsMiddlewareConfig = session.Config{
 	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(secrets.Session)),
 }
 
-// custom session middleware
-func sessionProcessingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+// SessionProcessingMiddleware adds sensible defaults to the provided sessions
+func SessionProcessingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// the request should have a session frem the builtin sessions middleware
 		sess, err := session.Get(sessionName, c)
 		if err != nil {
-			return fmt.Errorf("Error getting session: %+v")
+			return fmt.Errorf("Error getting session: %+v", err)
 		}
 
 		// if the session is new, set and persist the options
 		if sess.IsNew {
 			sess.Options = &sessions.Options{
 				Path:     "/",
-				MaxAge:   sessionMaxAgeSeconds,
+				MaxAge:   defaultMaxAgeSeconds,
 				HttpOnly: true,
 				Secure:   true,
 			}

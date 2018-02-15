@@ -2,6 +2,11 @@
   "name": "passwords",
   "version": "0.1.0",
   "private": true,
+  "proxy": {
+    "/api": {
+      "target": "http://localhost:8080"
+    }
+  },
   "dependencies": {
     "openpgp": "^2.6.2",
     "react": "^16.2.0",

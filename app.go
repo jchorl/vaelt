@@ -5,16 +5,16 @@ import (
 
 	"github.com/labstack/echo"
 
-	"github.com/jchorl/passwords/auth"
-	"github.com/jchorl/passwords/users"
-	"github.com/jchorl/passwords/vault"
+	"auth"
+	"users"
+	"vault"
 )
 
 var e = createMux()
 
 func init() {
 	usersGroup := e.Group("/api/users")
-	usersGroup.POST("", users.RegisterHandler)
+	usersGroup.POST("", users.RegisterHandler, auth.SessionsMiddleware, auth.SessionProcessingMiddleware)
 
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)
