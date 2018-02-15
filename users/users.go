@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"util"
+	"auth/scopes"
+	"auth/sessions"
 	"vault"
 )
 
@@ -29,7 +29,7 @@ type User struct {
 // RegisterHandler registers a new user
 func RegisterHandler(c echo.Context) error {
 	// can't register a user if there is an authd session
-	if util.IsContextAuthd(c) {
+	if sessions.IsContextAuthd(c) {
 		return c.NoContent(http.StatusConflict)
 	}
 
@@ -85,14 +85,7 @@ func RegisterHandler(c echo.Context) error {
 	}
 
 	// set the userkey in the session
-	// some of this uses hardcoded values because auth cannot be imported :(
-	sess := c.Get("session").(*sessions.Session)
-	sess.Values["userKey"] = userKey.Encode()
-	sess.Values["scope"] = "WRITE"
-	err = sess.Save(c.Request(), c.Response())
-	if err != nil {
-		log.Errorf(ctx, "Unable to save the sess: %+v", err)
-	}
+	sessions.UpdateSession(c, userKey, scopes.Write)
 	return c.NoContent(http.StatusCreated)
 }
 

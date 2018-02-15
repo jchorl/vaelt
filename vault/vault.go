@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -9,7 +10,7 @@ import (
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"util"
+	"auth/sessions"
 )
 
 const (
@@ -35,12 +36,12 @@ func PostHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	userKey, err := util.GetUserKeyFromContext(c)
-	if err != nil {
-		return err
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
 	}
 
-	_, err = Put(ctx, entry, userKey)
+	_, err := Put(ctx, entry, userKey)
 	if err != nil {
 		return err
 	}
@@ -68,9 +69,9 @@ func GetHandler(c echo.Context) error {
 	}
 
 	// make sure that user owns the vault entity
-	userKey, err := util.GetUserKeyFromContext(c)
-	if err != nil {
-		return err
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
 	}
 
 	if !vaultKey.Parent().Equal(userKey) {
@@ -83,9 +84,9 @@ func GetHandler(c echo.Context) error {
 // GetAllHandler retrieves all of a user's entities from the vault
 func GetAllHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
-	userKey, err := util.GetUserKeyFromContext(c)
-	if err != nil {
-		return err
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
 	}
 
 	entries, err := GetAll(ctx, userKey)

@@ -1,16 +1,11 @@
 package auth
 
 import (
-	"fmt"
-
-	"github.com/dsoprea/goappenginesessioncascade"
-	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo-contrib/session"
 
-	"secrets"
+	"auth/scopes"
+	"auth/sessions"
 	"users"
-	"util"
 )
 
 /*
@@ -27,71 +22,26 @@ Obtaining READ scope requires:
 - email/password
 */
 
-const (
-	// ScopeRead marks a user as having permission to read their data
-	ScopeRead = "READ"
-	// ScopeWrite marks a user as having permission to write to their data
-	ScopeWrite = "WRITE"
-
-	sessionName          = "session"
-	defaultMaxAgeSeconds = 10 * 60
-)
-
-var (
-	// SessionsMiddleware is the middleware to create sessions before every req
-	SessionsMiddleware = session.MiddlewareWithConfig(sessionsMiddlewareConfig)
-)
-
 // AuthReadMiddlewares are the middlewares used to auth a read request
 var AuthReadMiddlewares = []echo.MiddlewareFunc{
-	SessionsMiddleware,
-	SessionProcessingMiddleware,
+	sessions.SessionsMiddleware,
+	sessions.SessionProcessingMiddleware,
 	basicAuthMiddleware,
 	readAuthCheckMiddleware,
 }
 
 // AuthWriteMiddlewares are the middlewares used to auth a write request
 var AuthWriteMiddlewares = []echo.MiddlewareFunc{
-	SessionsMiddleware,
-	SessionProcessingMiddleware,
+	sessions.SessionsMiddleware,
+	sessions.SessionProcessingMiddleware,
 	basicAuthMiddleware,
 	writeAuthCheckMiddleware,
-}
-
-// builtin sessions middleware
-var sessionsMiddlewareConfig = session.Config{
-	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(secrets.Session)),
-}
-
-// SessionProcessingMiddleware adds sensible defaults to the provided sessions
-func SessionProcessingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		// the request should have a session frem the builtin sessions middleware
-		sess, err := session.Get(sessionName, c)
-		if err != nil {
-			return fmt.Errorf("Error getting session: %+v", err)
-		}
-
-		// if the session is new, set and persist the options
-		if sess.IsNew {
-			sess.Options = &sessions.Options{
-				Path:     "/",
-				MaxAge:   defaultMaxAgeSeconds,
-				HttpOnly: true,
-				Secure:   true,
-			}
-			sess.Save(c.Request(), c.Response())
-		}
-		c.Set(sessionName, sess)
-
-		return next(c)
-	}
 }
 
 // basic auth middleware
 func basicAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if util.IsContextAuthd(c) {
+		if sessions.IsContextAuthd(c) {
 			return next(c)
 		}
 
@@ -102,10 +52,7 @@ func basicAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// auth was successful, so set the new details
 		if userKey != nil {
-			sess := c.Get(sessionName).(*sessions.Session)
-			sess.Values["userKey"] = userKey.Encode()
-			sess.Values["scope"] = ScopeWrite
-			sess.Save(c.Request(), c.Response())
+			sessions.UpdateSession(c, userKey, scopes.Write)
 		}
 
 		return next(c)
@@ -115,12 +62,10 @@ func basicAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 // read auth checking middleware
 func readAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		sess := c.Get(sessionName).(*sessions.Session)
-
 		// check for read scope
-		scope, scopeOk := sess.Values["scope"].(string)
-		_, userKeyOk := sess.Values["userKey"].(string)
-		if !scopeOk || !userKeyOk || (scope != ScopeRead && scope != ScopeWrite) {
+		scope, scopeOk := sessions.GetScopeFromContext(c)
+		_, userKeyOk := sessions.GetUserKeyFromContext(c)
+		if !scopeOk || !userKeyOk || (scope != scopes.Read && scope != scopes.Write) {
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, "basic")
 			return echo.ErrUnauthorized
 		}
@@ -132,12 +77,10 @@ func readAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 // write auth checking middleware
 func writeAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		sess := c.Get(sessionName).(*sessions.Session)
-
 		// check for write scope
-		scope, scopeOk := sess.Values["scope"].(string)
-		_, userKeyOk := sess.Values["userKey"].(string)
-		if !scopeOk || !userKeyOk || scope != ScopeWrite {
+		scope, scopeOk := sessions.GetScopeFromContext(c)
+		_, userKeyOk := sessions.GetUserKeyFromContext(c)
+		if !scopeOk || !userKeyOk || scope != scopes.Write {
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, "basic")
 			return echo.ErrUnauthorized
 		}
