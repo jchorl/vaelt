@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/labstack/echo"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
+	"github.com/jchorl/passwords/util"
 	"github.com/jchorl/passwords/vault"
-	"github.com/labstack/echo"
 )
 
 const (
@@ -24,12 +25,13 @@ type User struct {
 	Password *datastore.Key
 }
 
-// RegisterHandlers registers handlers on an echo Group
-func RegisterHandlers(g *echo.Group) {
-	g.POST("/register", registerHandler)
-}
+// RegisterHandler registers a new user
+func RegisterHandler(c echo.Context) error {
+	// can't register a user if there is an authd session
+	if util.IsContextAuthd(c) {
+		return c.NoContent(http.StatusConflict)
+	}
 
-func registerHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	email, password, ok := c.Request().BasicAuth()
@@ -84,9 +86,13 @@ func registerHandler(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
-// AuthUser auths a user and returns their user key
-func AuthUser(email, password string, req *http.Request) (*datastore.Key, error) {
+// AuthUserByUsernamePassword auths a user and returns their user key
+func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 	ctx := appengine.NewContext(req)
+	email, password, ok := req.BasicAuth()
+	if !ok {
+		return nil, nil
+	}
 
 	var results []User
 	query := datastore.NewQuery(userEntityType).

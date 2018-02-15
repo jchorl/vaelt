@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
-
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
+
+	"github.com/jchorl/passwords/util"
 )
 
 const (
@@ -25,14 +26,8 @@ type Entry struct {
 	Domain           string         `json:"domain,omitempty"`
 }
 
-// RegisterHandlers registers handlers on an echo Group
-func RegisterHandlers(g *echo.Group) {
-	g.POST("", postHandler)
-	g.GET("/:id", getHandler)
-	g.GET("", getAllHandler)
-}
-
-func postHandler(c echo.Context) error {
+// PostHandler posts to vault
+func PostHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	entry := new(Entry)
@@ -40,8 +35,12 @@ func postHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	userKey := c.Get("userKey").(*datastore.Key)
-	_, err := Put(ctx, entry, userKey)
+	userKey, err := util.GetUserKeyFromContext(c)
+	if err != nil {
+		return err
+	}
+
+	_, err = Put(ctx, entry, userKey)
 	if err != nil {
 		return err
 	}
@@ -49,7 +48,8 @@ func postHandler(c echo.Context) error {
 	return c.JSON(http.StatusCreated, entry)
 }
 
-func getHandler(c echo.Context) error {
+// GetHandler retrieves a single entity from vault
+func GetHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	vaultKeyEncoded := c.Param("id")
@@ -68,7 +68,11 @@ func getHandler(c echo.Context) error {
 	}
 
 	// make sure that user owns the vault entity
-	userKey := c.Get("userKey").(*datastore.Key)
+	userKey, err := util.GetUserKeyFromContext(c)
+	if err != nil {
+		return err
+	}
+
 	if !vaultKey.Parent().Equal(userKey) {
 		return echo.NewHTTPError(http.StatusNotFound)
 	}
@@ -76,9 +80,13 @@ func getHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, entry)
 }
 
-func getAllHandler(c echo.Context) error {
+// GetAllHandler retrieves all of a user's entities from the vault
+func GetAllHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
-	userKey := c.Get("userKey").(*datastore.Key)
+	userKey, err := util.GetUserKeyFromContext(c)
+	if err != nil {
+		return err
+	}
 
 	entries, err := GetAll(ctx, userKey)
 	if err != nil {
