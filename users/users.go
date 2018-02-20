@@ -106,7 +106,7 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 		return nil, err
 	}
 
-	passwordEntry, err := vault.Get(ctx, u.Password)
+	passwordEntry, err := vault.Get(ctx, u.Password, key)
 	if err != nil {
 		return nil, err
 	}
