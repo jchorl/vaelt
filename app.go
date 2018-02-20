@@ -19,6 +19,7 @@ func init() {
 
 	usersGroup := e.Group("/api/users")
 	usersGroup.POST("", users.RegisterHandler, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
+	usersGroup.GET("/verify/:userKey", users.VerifyUser, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
 
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)

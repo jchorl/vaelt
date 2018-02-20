@@ -145,8 +145,21 @@ func readAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 func writeAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		// check for write scope
-		_, userKeyOk := sessions.GetUserKeyFromContext(c)
-		if !userKeyOk || !hasScope(c, scopes.Write) {
+		userKey, userKeyOk := sessions.GetUserKeyFromContext(c)
+		if !userKeyOk {
+			return echo.ErrUnauthorized
+		}
+
+		user, err := users.GetUserByKey(c, userKey)
+		if err != nil {
+			return echo.ErrUnauthorized
+		}
+
+		if !user.Verified {
+			return c.String(http.StatusUnauthorized, "account is not verified")
+		}
+
+		if !hasScope(c, scopes.Write) {
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, "basic")
 			return echo.ErrUnauthorized
 		}

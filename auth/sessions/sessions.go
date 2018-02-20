@@ -33,8 +33,18 @@ var sessionsMiddlewareConfig = session.Config{
 	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(config.SessionSecret)),
 }
 
-// Logout expires a user's session
+// Logout is a handler to expire a user's session
 func Logout(c echo.Context) error {
+	err := ExpireSession(c)
+	if err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+// ExpireSession expires a user's session and erases their userkey and scope
+func ExpireSession(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 	sess, err := session.Get(sessionName, c)
 	if err != nil {
@@ -48,12 +58,7 @@ func Logout(c echo.Context) error {
 	sess.Options.MaxAge = -1
 	sess.Values[userKeySessionField] = ""
 	sess.Values[scopeSessionField] = ""
-	err = sess.Save(c.Request(), c.Response())
-	if err != nil {
-		return err
-	}
-
-	return c.NoContent(http.StatusOK)
+	return sess.Save(c.Request(), c.Response())
 }
 
 // SessionProcessingMiddleware adds sensible defaults to the provided sessions

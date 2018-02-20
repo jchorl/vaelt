@@ -26,6 +26,7 @@ type User struct {
 	Email       string         `json:"email"`
 	Password    *datastore.Key `json:"-"`
 	U2fEnforced bool           `json:"u2fEnforced"`
+	Verified    bool           `json:"verified"`
 }
 
 // RegisterHandler registers a new user
@@ -81,8 +82,14 @@ func RegisterHandler(c echo.Context) error {
 		return err
 	}
 
+	err = requestVerification(c, userKey, email)
+	if err != nil {
+		return err
+	}
+
 	// set the userkey in the session
-	sessions.UpdateSession(c, userKey, scopes.Write)
+	// set read scope, until the user verifies their email
+	sessions.UpdateSession(c, userKey, scopes.Read)
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -135,5 +142,8 @@ func GetUserByKey(c echo.Context, key *datastore.Key) (*User, error) {
 
 	u := &User{}
 	err := datastore.Get(ctx, key, u)
+	if err != nil {
+		log.Errorf(ctx, "Unable to fetch user by key: %+v", err)
+	}
 	return u, err
 }
