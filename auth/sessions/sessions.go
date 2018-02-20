@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/dsoprea/goappenginesessioncascade"
 	"github.com/gorilla/sessions"
@@ -11,7 +12,8 @@ import (
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 
-	"secrets"
+	"auth/scopes"
+	"config"
 )
 
 const (
@@ -28,7 +30,30 @@ var (
 
 // builtin sessions middleware
 var sessionsMiddlewareConfig = session.Config{
-	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(secrets.Session)),
+	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(config.SessionSecret)),
+}
+
+// Logout expires a user's session
+func Logout(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+	sess, err := session.Get(sessionName, c)
+	if err != nil {
+		log.Errorf(ctx, "Unable to get session for request: %+v", err)
+		return err
+	}
+	if sess == nil {
+		return c.NoContent(http.StatusNoContent)
+	}
+
+	sess.Options.MaxAge = -1
+	sess.Values[userKeySessionField] = ""
+	sess.Values[scopeSessionField] = ""
+	err = sess.Save(c.Request(), c.Response())
+	if err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 // SessionProcessingMiddleware adds sensible defaults to the provided sessions
@@ -57,7 +82,7 @@ func SessionProcessingMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // UpdateSession saves a session with the userKey and scope
-func UpdateSession(c echo.Context, userKey *datastore.Key, scope string) error {
+func UpdateSession(c echo.Context, userKey *datastore.Key, scope scopes.Scope) error {
 	ctx := appengine.NewContext(c.Request())
 	sess := c.Get(sessionName).(*sessions.Session)
 	sess.Values[userKeySessionField] = userKey.Encode()
@@ -70,9 +95,9 @@ func UpdateSession(c echo.Context, userKey *datastore.Key, scope string) error {
 }
 
 // GetScopeFromContext retrieves the scope from an authd context
-func GetScopeFromContext(c echo.Context) (string, bool) {
+func GetScopeFromContext(c echo.Context) (scopes.Scope, bool) {
 	sess := c.Get(sessionName).(*sessions.Session)
-	scope, ok := sess.Values[scopeSessionField].(string)
+	scope, ok := sess.Values[scopeSessionField].(scopes.Scope)
 	return scope, ok
 }
 
@@ -93,16 +118,4 @@ func GetUserKeyFromContext(c echo.Context) (*datastore.Key, bool) {
 	}
 
 	return decoded, true
-}
-
-// IsContextAuthd checks if a context has an authd user
-func IsContextAuthd(c echo.Context) bool {
-	sess, ok := c.Get(sessionName).(*sessions.Session)
-	if !ok {
-		return false
-	}
-
-	// if a scope is already present, then return true
-	_, ok = sess.Values[scopeSessionField].(string)
-	return ok
 }

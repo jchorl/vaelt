@@ -13,6 +13,7 @@ devserverbuild:
 
 devserve:
 	docker container run --rm -it \
+		-v gotmp:/root/go/src \
 		-v $(PWD):/root/go/src/github.com/jchorl/passwords \
 		-w /root/go/src/github.com/jchorl/passwords \
 		--net=host \

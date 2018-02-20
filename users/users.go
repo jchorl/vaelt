@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -22,17 +23,13 @@ const (
 
 // User represents a registered user
 type User struct {
-	Email    string         `json:"email"`
-	Password *datastore.Key `json:"-"`
+	Email       string         `json:"email"`
+	Password    *datastore.Key `json:"-"`
+	U2fEnforced bool           `json:"u2fEnforced"`
 }
 
 // RegisterHandler registers a new user
 func RegisterHandler(c echo.Context) error {
-	// can't register a user if there is an authd session
-	if sessions.IsContextAuthd(c) {
-		return c.NoContent(http.StatusConflict)
-	}
-
 	ctx := appengine.NewContext(c.Request())
 
 	email, password, ok := c.Request().BasicAuth()
@@ -97,19 +94,11 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 		return nil, nil
 	}
 
-	var results []User
-	query := datastore.NewQuery(userEntityType).
-		Filter("Email =", email)
-	keys, err := query.GetAll(ctx, &results)
+	key, u, err := FetchUserByEmail(ctx, email)
 	if err != nil {
-		log.Errorf(ctx, "Failed to check if user exists")
 		return nil, err
 	}
-	if len(results) == 0 {
-		return nil, nil
-	}
 
-	u := results[0]
 	passwordEntry, err := vault.Get(ctx, u.Password)
 	if err != nil {
 		return nil, err
@@ -120,5 +109,31 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 		return nil, nil
 	}
 
-	return keys[0], nil
+	return key, nil
+}
+
+// FetchUserByEmail fetches a user for a given email
+func FetchUserByEmail(ctx context.Context, email string) (*datastore.Key, *User, error) {
+	var results []User
+	query := datastore.NewQuery(userEntityType).
+		Filter("Email =", email)
+	keys, err := query.GetAll(ctx, &results)
+	if err != nil {
+		log.Errorf(ctx, "Failed to check if user exists")
+		return nil, nil, err
+	}
+	if len(results) == 0 {
+		return nil, nil, errors.New("No user found for given email")
+	}
+
+	return keys[0], &results[0], nil
+}
+
+// GetUserByKey gets a user by their key
+func GetUserByKey(c echo.Context, key *datastore.Key) (*User, error) {
+	ctx := appengine.NewContext(c.Request())
+
+	u := &User{}
+	err := datastore.Get(ctx, key, u)
+	return u, err
 }
