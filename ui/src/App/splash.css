@@ -1,0 +1,118 @@
+.splash {
+  display: flex;
+  width: 100%;
+
+  background-color: var(--light-grey);
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.splash .splashLogin {
+  z-index: 5;
+  margin: 80px 60px;
+}
+
+.splash .blurb {
+  z-index: 5;
+  max-width: 690px;
+  background-color: #FFFC;
+  padding: 20px 60px 60px;
+  margin: 80px 60px;
+  box-shadow: rgba(0,0,0,0.1) 0 0 35px;
+  border-radius: 4px;
+}
+
+.splash .blurb .blurbText {
+  color: var(--dark-grey);
+}
+
+.splash .lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  position: absolute;
+  top: 40px;
+  left: 40px;
+}
+
+.splash .lock .lockHumpCutout {
+  width: 104px;
+  height: 112px;
+  border-radius: 50% 50% 0 0;
+  background-color: var(--light-grey);
+}
+
+.splash .lock .lockHump {
+  width: 160px;
+  height: 140px;
+  border-radius: 50% 50% 0 0;
+  background-color: var(--very-light-blue);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.splash .lock .lockSquare {
+  width: 200px;
+  height: 200px;
+  background-color: var(--very-light-blue);
+  border-radius: 10px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.splash .lock .lockKeyCircle {
+  width: 40px;
+  height: 40px;
+  background-color: var(--light-grey);
+  border-radius: 50%;
+  margin-top: 50px;
+}
+
+.splash .lock .lockKeyTrapezoid {
+  width: 10px;
+  height: 0;
+  border-bottom: 50px solid var(--light-grey);
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  position: relative;
+  top: -2px;
+}
+
+.splash .curveone {
+  height: 750px;
+  width: 750px;
+  border-radius: 50%;
+  background-color: var(--very-light-blue);
+
+  position: absolute;
+  right: 0;
+  top: -400px;
+}
+
+.splash .curvetwo {
+  width: 300px;
+  height: 700px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  background-color: var(--very-light-blue);
+}
+
+.splash .curvethree {
+  height: 750px;
+  width: 750px;
+  border-radius: 50%;
+  background-color: var(--light-grey);
+
+  position: absolute;
+  right: -50%;
+  bottom: -650px;
+}

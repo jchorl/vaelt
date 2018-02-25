@@ -8,6 +8,7 @@
     }
   },
   "dependencies": {
+    "classnames": "^2.2.5",
     "openpgp": "^2.6.2",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
