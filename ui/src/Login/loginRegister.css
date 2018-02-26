@@ -28,6 +28,28 @@
   border-bottom: 2px solid var(--dark-blue);
 }
 
+.loginRegister .inputContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loginRegister .verificationText {
+  color: var(--dark-grey);
+  font-size: 0.8em;
+  width: 220px;
+}
+
+.loginRegister .errorText {
+  width: 220px;
+  font-size: 0.7em;
+  color: var(--red);
+}
+
 .loginRegister button {
   margin-top: 20px;
+}
+
+.loginRegister input {
+  min-width: 220px;
 }

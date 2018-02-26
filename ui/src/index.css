@@ -55,3 +55,7 @@ button {
   font-size: 14px;
   font-weight: 700;
 }
+
+button:focus {
+  outline:0;
+}

@@ -21,6 +21,11 @@ const (
 	userEntityType = "user"
 )
 
+var (
+	// ErrorBadRequest represents invalid auth headers
+	ErrorBadRequest = errors.New("Unable to parse authentication info from request")
+)
+
 // User represents a registered user
 type User struct {
 	Email       string         `json:"email"`
@@ -35,8 +40,7 @@ func RegisterHandler(c echo.Context) error {
 
 	email, password, ok := c.Request().BasicAuth()
 	if !ok {
-		err := errors.New("Unable to get auth info from request")
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Unable to get auth info from request")
 	}
 
 	// check if the user exists already
@@ -45,12 +49,12 @@ func RegisterHandler(c echo.Context) error {
 		KeysOnly()
 	keys, err := query.GetAll(ctx, nil)
 	if err != nil {
-		log.Errorf(ctx, "Failed to check if user exists")
+		log.Errorf(ctx, "Failed to check if user exists: %+v", err)
 		return err
 	}
 	if len(keys) > 0 {
-		err := fmt.Errorf("Email %s already has an account", email)
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		msg := fmt.Sprintf("Email %s already has an account", email)
+		return echo.NewHTTPError(http.StatusBadRequest, msg)
 	}
 
 	// make a full key for a user
@@ -78,13 +82,16 @@ func RegisterHandler(c echo.Context) error {
 	}
 	userKey, err = datastore.Put(ctx, userKey, &user)
 	if err != nil {
-		log.Errorf(ctx, "Unable to store the user")
+		log.Errorf(ctx, "Unable to store the user: %+v", err)
 		return err
 	}
 
 	err = requestVerification(c, userKey, email)
 	if err != nil {
-		return err
+		log.Errorf(ctx, "Error sending verification email to user: %+v", err)
+
+		// if we cant send verification email, just verify them
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email. You can log in, but will have limited access until you verify your account. You can log in to request another verification email.")
 	}
 
 	// set the userkey in the session
@@ -93,12 +100,17 @@ func RegisterHandler(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
+// Login just returns 200, because middlewares do the work
+func Login(c echo.Context) error {
+	return c.NoContent(http.StatusOK)
+}
+
 // AuthUserByUsernamePassword auths a user and returns their user key
 func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 	ctx := appengine.NewContext(req)
 	email, password, ok := req.BasicAuth()
 	if !ok {
-		return nil, nil
+		return nil, ErrorBadRequest
 	}
 
 	key, u, err := FetchUserByEmail(ctx, email)
@@ -126,11 +138,11 @@ func FetchUserByEmail(ctx context.Context, email string) (*datastore.Key, *User,
 		Filter("Email =", email)
 	keys, err := query.GetAll(ctx, &results)
 	if err != nil {
-		log.Errorf(ctx, "Failed to check if user exists")
+		log.Errorf(ctx, "Failed to check if user exists: %+v", err)
 		return nil, nil, err
 	}
 	if len(results) == 0 {
-		return nil, nil, errors.New("No user found for given email")
+		return nil, nil, errors.New("No user found with that email address")
 	}
 
 	return keys[0], &results[0], nil

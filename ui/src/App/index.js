@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
+import { Route } from 'react-router-dom'
 import Nav from './nav';
 import Splash from './splash';
+import Dashboard from '../Dashboard';
 import './App.css';
 
 export default class App extends Component {
@@ -8,7 +10,8 @@ export default class App extends Component {
         return (
             <div className="app">
                 <Nav />
-                <Splash />
+                <Route exact path="/" component={Splash}/>
+                <Route path="/dashboard" component={Dashboard}/>
             </div>
             );
     }

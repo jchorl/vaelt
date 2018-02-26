@@ -1,11 +1,12 @@
 .splash {
   display: flex;
   width: 100%;
+  min-height: 500px;
 
   background-color: var(--light-grey);
   position: relative;
   overflow: hidden;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 

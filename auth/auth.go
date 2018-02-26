@@ -13,7 +13,7 @@ import (
 )
 
 /*
-There are two scopes, READ and WRITE
+There are two main scopes, READ and WRITE
 Obtaining WRITE scope requires:
 - email/password with optional enforced u2f
 
@@ -40,6 +40,14 @@ var AuthWriteMiddlewares = []echo.MiddlewareFunc{
 	sessions.SessionProcessingMiddleware,
 	basicAuthMiddlewareWrite,
 	writeAuthCheckMiddleware,
+}
+
+var AuthWriteFallBackToReadMiddlewares = []echo.MiddlewareFunc{
+	sessions.SessionsMiddleware,
+	sessions.SessionProcessingMiddleware,
+	basicAuthMiddlewareWrite,
+	basicAuthMiddlewareRead,
+	readAuthCheckMiddleware,
 }
 
 // AddUserKeyMiddleware adds a user key to a request for u2f auth
@@ -77,7 +85,10 @@ func basicAuthMiddlewareWrite(next echo.HandlerFunc) echo.HandlerFunc {
 
 		userKey, err := users.AuthUserByUsernamePassword(c.Request())
 		if err != nil {
-			return err
+			if err == users.ErrorBadRequest {
+				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			}
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid email/password")
 		}
 
 		// auth was successful, check if u2f is required and set the new details
@@ -93,7 +104,7 @@ func basicAuthMiddlewareWrite(next echo.HandlerFunc) echo.HandlerFunc {
 				// mark the session as u2f in progress
 				sessions.UpdateSession(c, userKey, scopes.U2fForWrite)
 				// return 401 with a useful error
-				return c.String(http.StatusUnauthorized, "u2f required")
+				return echo.NewHTTPError(http.StatusUnauthorized, "U2F required")
 			}
 			sessions.UpdateSession(c, userKey, scopes.Write)
 		}
@@ -156,7 +167,7 @@ func writeAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		if !user.Verified {
-			return c.String(http.StatusUnauthorized, "account is not verified")
+			return echo.NewHTTPError(http.StatusUnauthorized, "Account is not verified")
 		}
 
 		if !hasScope(c, scopes.Write) {

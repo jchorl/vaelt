@@ -1,8 +1,14 @@
 import React, { Component } from 'react';
+import { withRouter } from 'react-router';
+import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import './loginRegister.css';
 
-export default class LoginRegister extends Component {
+class LoginRegister extends Component {
+    static propTypes = {
+        history: PropTypes.object.isRequired,
+    }
+
     constructor() {
         super();
 
@@ -29,35 +35,86 @@ export default class LoginRegister extends Component {
         this.setState({ isRegister: true });
     }
 
-    register = () => {
-        const { email, password } = this.state;
+    submit = () => {
+        const { email, password, isRegister } = this.state;
 
         let headers = new Headers();
         headers.append('Authorization', 'Basic ' + btoa(email + ":" + password));
-        fetch("/api/users", {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: headers,
-        })
-        .then(resp => {
-            if (resp.ok) {
-                console.log('should log in');
-            }
-        })
-        .catch(err => console.err(err));
+        if (isRegister) {
+            fetch("/api/users", {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: headers,
+            })
+            .then(resp => {
+                if (resp.ok) {
+                    this.setState({ registrationSuccess: true });
+                } else {
+                    resp.text().then(body => {
+                        try {
+                            let parsed = JSON.parse(body);
+                            this.setState({ errorText: parsed.message })
+                        } catch (e) {
+                            this.setState({ errorText: body })
+                        }
+                    });
+                }
+            })
+            .catch(err => {
+                this.setState({ errorText: err.message || err.name });
+            });
+        } else {
+            fetch("/api/users/login", {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: headers,
+            })
+            .then(resp => {
+                if (resp.ok) {
+                    this.props.history.push('/dashboard');
+                } else {
+                    resp.text().then(body => {
+                        try {
+                            let parsed = JSON.parse(body);
+                            this.setState({ errorText: parsed.message })
+                        } catch (e) {
+                            this.setState({ errorText: body })
+                        }
+                    });
+                }
+            })
+            .catch(err => {
+                this.setState({ errorText: err.message || err.name });
+            });
+        }
     }
 
     render() {
+        const { email, password, isRegister, errorText, registrationSuccess } = this.state;
         return (
         <div className="loginRegister">
             <div className="toggles">
-                <div className={ classNames("toggle", {"active": !this.state.isRegister}) } onClick={ this.loginMode }>Login</div>
-                <div className={ classNames("toggle", {"active": this.state.isRegister}) } onClick={ this.registerMode }>Register</div>
+                <div className={ classNames("toggle", {"active": !isRegister}) } onClick={ this.loginMode }>Login</div>
+                <div className={ classNames("toggle", {"active": isRegister}) } onClick={ this.registerMode }>Register</div>
             </div>
-            <input type="text" value={ this.state.email } onChange={ this.handleEmailChange } placeholder="Email" />
-            <input type="password" value={ this.state.password } onChange={ this.handlePasswordChange } placeholder="Password" />
-            <button type="submit" onClick={ this.register } className="submitButton">{ this.state.isRegister ? 'Register' : 'Login' }</button>
+            { registrationSuccess ?
+            (
+            <div className="verificationText">We've sent you a verification email. Please click that link to activate your account.</div>
+            ) : (
+            <div className="inputContainer">
+                <input type="text" value={ email } onChange={ this.handleEmailChange } placeholder="Email" />
+                <input type="password" value={ password } onChange={ this.handlePasswordChange } placeholder="Password" />
+                { !!errorText ? (
+                <div className="errorText">
+                    { errorText }
+                </div>
+                ) : null }
+                <button type="submit" onClick={ this.submit } className="submitButton">{ isRegister ? 'Register' : 'Login' }</button>
+            </div>
+            ) }
         </div>
         );
     }
 }
+
+export default withRouter(LoginRegister);
