@@ -15,12 +15,13 @@ import (
 var e = createMux()
 
 func init() {
-	e.GET("/api/logout", sessions.Logout, sessions.SessionsMiddleware)
+	e.GET("/api/logout", sessions.LogoutHandler, sessions.SessionsMiddleware)
 
 	usersGroup := e.Group("/api/users")
 	usersGroup.POST("", users.RegisterHandler, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
-	usersGroup.POST("/login", users.Login, auth.AuthWriteFallBackToReadMiddlewares...)
-	usersGroup.GET("/verify/:userKey", users.VerifyUser, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
+	usersGroup.GET("", users.GetUserHandler, auth.AuthReadMiddlewares...)
+	usersGroup.POST("/login", users.LoginHandler, auth.AuthWriteFallBackToReadMiddlewares...)
+	usersGroup.GET("/verify/:userKey", users.VerifyUserHandler, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
 
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)

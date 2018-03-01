@@ -6,7 +6,9 @@ import './loginRegister.css';
 
 class LoginRegister extends Component {
     static propTypes = {
-        history: PropTypes.object.isRequired,
+        history: PropTypes.shape({
+            push: PropTypes.func.isRequired,
+        }).isRequired,
     }
 
     constructor() {

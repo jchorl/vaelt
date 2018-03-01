@@ -18,3 +18,7 @@
 .nav .logo {
   font-size: 50px;
 }
+
+.nav .logoutButton {
+  margin-left: 30px;
+}

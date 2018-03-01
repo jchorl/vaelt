@@ -6,7 +6,7 @@ export default class Logout extends Component {
             credentials: 'same-origin',
         })
         .then(resp => console.log(resp))
-        .catch(err => console.err(err));
+        .catch(err => console.error(err));
     }
 
     render() {

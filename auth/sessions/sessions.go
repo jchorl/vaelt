@@ -33,8 +33,8 @@ var sessionsMiddlewareConfig = session.Config{
 	Store: cascadestore.NewCascadeStore(cascadestore.MemcacheBackend, []byte(config.SessionSecret)),
 }
 
-// Logout is a handler to expire a user's session
-func Logout(c echo.Context) error {
+// LogoutHandler is a handler to expire a user's session
+func LogoutHandler(c echo.Context) error {
 	err := ExpireSession(c)
 	if err != nil {
 		return err

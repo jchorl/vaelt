@@ -1,9 +1,18 @@
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import LoginRegister from '../Login';
 import './splash.css';
 
 export default class Splash extends Component {
+    static propTypes = {
+        user: PropTypes.shape({
+            email: PropTypes.string.isRequired,
+        })
+    }
+
     render() {
+        const { user } = this.props;
+
         return (
             <div className="splash">
                 <div className="blurb">
@@ -13,7 +22,9 @@ export default class Splash extends Component {
                     </div>
                 </div>
                 <div className="splashLogin">
-                    <LoginRegister />
+                    { !!user ? (
+                    <div>Logged in</div>
+                    ) : <LoginRegister /> }
                 </div>
                 <div className="lock">
                     <div className="lockHump">

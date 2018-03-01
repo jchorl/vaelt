@@ -65,7 +65,7 @@ func AddUserKeyMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.NoContent(http.StatusBadRequest)
 		}
 
-		key, _, err := users.FetchUserByEmail(ctx, email)
+		key, _, err := users.GetUserByEmail(ctx, email)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ func basicAuthMiddlewareRead(next echo.HandlerFunc) echo.HandlerFunc {
 
 		userKey, err := users.AuthUserByUsernamePassword(c.Request())
 		if err != nil {
-			return err
+			return echo.ErrUnauthorized
 		}
 
 		// auth was successful, so set the new details

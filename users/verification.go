@@ -51,7 +51,8 @@ func requestVerification(c echo.Context, userKey *datastore.Key, email string) e
 	return nil
 }
 
-func VerifyUser(c echo.Context) error {
+// VerifyUserHandler verifies a user
+func VerifyUserHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 	userKeyEncoded := c.Param("userKey")
 	userKey, err := datastore.DecodeKey(userKeyEncoded)

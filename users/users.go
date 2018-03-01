@@ -100,9 +100,24 @@ func RegisterHandler(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
-// Login just returns 200, because middlewares do the work
-func Login(c echo.Context) error {
+// LoginHandler just returns 200, because middlewares do the work
+func LoginHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
+}
+
+// GetUserHandler returns the user info
+func GetUserHandler(c echo.Context) error {
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	user, err := GetUserByKey(c, userKey)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, user)
 }
 
 // AuthUserByUsernamePassword auths a user and returns their user key
@@ -113,7 +128,7 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 		return nil, ErrorBadRequest
 	}
 
-	key, u, err := FetchUserByEmail(ctx, email)
+	key, u, err := GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +146,8 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 	return key, nil
 }
 
-// FetchUserByEmail fetches a user for a given email
-func FetchUserByEmail(ctx context.Context, email string) (*datastore.Key, *User, error) {
+// GetUserByEmail fetches a user for a given email
+func GetUserByEmail(ctx context.Context, email string) (*datastore.Key, *User, error) {
 	var results []User
 	query := datastore.NewQuery(userEntityType).
 		Filter("Email =", email)

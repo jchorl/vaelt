@@ -50,7 +50,7 @@ export default class SignU2F extends Component {
             headers,
         })
         .then(resp => console.log(resp))
-        .catch(err => console.err(err));
+        .catch(err => console.error(err));
     }
 
     fetchChallenge = () => {
@@ -66,7 +66,7 @@ export default class SignU2F extends Component {
             u2f.sign(req.appId, req.challenge, req.registeredKeys, this.u2fSigned, 30);
             console.log('tap the yubikey');
         })
-        .catch(err => console.err(err));
+        .catch(err => console.error(err));
     }
 
     render() {
