@@ -102,7 +102,7 @@ func RegisterHandler(c echo.Context) error {
 
 // LoginHandler just returns 200, because middlewares do the work
 func LoginHandler(c echo.Context) error {
-	return c.NoContent(http.StatusOK)
+	return GetUserHandler(c)
 }
 
 // GetUserHandler returns the user info
