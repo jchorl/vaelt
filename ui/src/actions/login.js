@@ -18,9 +18,9 @@ function receiveLoginSuccess(user) {
 
 export const FETCH_LOGIN_FAILURE = 'FETCH_LOGIN_FAILURE';
 function receiveLoginFailure(error) {
-    console.log(error);
     return {
         type: FETCH_LOGIN_FAILURE,
+        error,
     }
 }
 

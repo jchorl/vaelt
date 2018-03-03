@@ -123,7 +123,7 @@ func basicAuthMiddlewareRead(next echo.HandlerFunc) echo.HandlerFunc {
 
 		userKey, err := users.AuthUserByUsernamePassword(c.Request())
 		if err != nil {
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")
 		}
 
 		// auth was successful, so set the new details
@@ -141,11 +141,10 @@ func readAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// check for read scope
 		_, userKeyOk := sessions.GetUserKeyFromContext(c)
 		if !userKeyOk || !hasScope(c, scopes.Read, scopes.Write) {
-			c.Response().Header().Add(echo.HeaderWWWAuthenticate, "Basic")
 			if u2f.HasRegistrations(c) {
 				c.Response().Header().Add(echo.HeaderWWWAuthenticate, "U2F")
 			}
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")
 		}
 
 		return next(c)
@@ -158,12 +157,12 @@ func writeAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// check for write scope
 		userKey, userKeyOk := sessions.GetUserKeyFromContext(c)
 		if !userKeyOk {
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")
 		}
 
 		user, err := users.GetUserByKey(c, userKey)
 		if err != nil {
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")
 		}
 
 		if !user.Verified {
@@ -172,7 +171,7 @@ func writeAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if !hasScope(c, scopes.Write) {
 			c.Response().Header().Set(echo.HeaderWWWAuthenticate, "basic")
-			return echo.ErrUnauthorized
+			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")
 		}
 
 		return next(c)

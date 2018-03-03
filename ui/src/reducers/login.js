@@ -15,7 +15,6 @@ export default function login(state = defaultState, action) {
             return state.set('isFetching', true);
         case FETCH_LOGIN_SUCCESS:
             return state.merge({
-                user: action.user,
                 receivedAt: action.receivedAt,
                 isFetching: false,
             });

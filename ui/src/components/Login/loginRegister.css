@@ -37,6 +37,7 @@
   color: var(--dark-grey);
   font-size: 0.8em;
   width: 220px;
+  margin: 10px;
 }
 
 .loginRegister .errorText {
@@ -51,4 +52,14 @@
 
 .loginRegister input {
   min-width: 220px;
+}
+
+.loginRegister .welcomeBack {
+  min-width: 220px;
+  margin: 10px;
+}
+
+.loginRegister .goToDashboardButtonWrapper {
+  display: flex;
+  justify-content: center;
 }

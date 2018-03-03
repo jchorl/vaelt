@@ -2,16 +2,11 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
-import { withRouter } from 'react-router';
 import { login } from '../../actions/login';
 
 class Login extends Component {
     static propTypes = {
-        history: PropTypes.shape({
-            push: PropTypes.func.isRequired,
-        }).isRequired,
         login: ImmutablePropTypes.contains({
-            receivedAt: PropTypes.number,
             error: ImmutablePropTypes.contains({
                 message: PropTypes.string.isRequired,
             }),
@@ -25,12 +20,6 @@ class Login extends Component {
         this.state = {
             email: "",
             password: "",
-        }
-    }
-
-    componentWillReceiveProps(nextProps) {
-        if (nextProps.login.has('receivedAt')) {
-            this.props.history.push('/dashboard');
         }
     }
 
@@ -70,9 +59,9 @@ class Login extends Component {
     }
 }
 
-export default withRouter(connect(
+export default connect(
     state => ({ login: state.login }),
     dispatch => ({
         loginUser: (email, password) => dispatch(login(email, password)),
     }),
-)(Login));
+)(Login);
