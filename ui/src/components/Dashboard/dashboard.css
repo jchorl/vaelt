@@ -1,0 +1,23 @@
+.dashboard .dashboardNav {
+  width: 100%;
+  background-color: var(--light-blue);
+  display: flex;
+  justify-content: center;
+}
+
+.dashboard .dashboardNav .navOption {
+  padding: 6px 14px;
+  margin: 10px 20px;
+  border-radius: 15px;
+  border: 1px solid var(--dark-blue);
+  font-size: 0.8em;
+  cursor: pointer;
+
+  text-decoration: none;
+  color: inherit;
+}
+
+.dashboard .dashboardNav .navOption.active {
+  background-color: var(--dark-blue);
+  color: white;
+}

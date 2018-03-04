@@ -16,7 +16,7 @@ export default function user(state = defaultState, action) {
             return state.set('isFetching', true);
         case FETCH_USER_SUCCESS:
         case FETCH_LOGIN_SUCCESS:
-            return state.merge({
+            return Map({
                 user: action.user,
                 receivedAt: action.receivedAt,
                 isFetching: false,
