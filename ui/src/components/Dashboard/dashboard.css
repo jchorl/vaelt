@@ -1,3 +1,9 @@
+.dashboard {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .dashboard .dashboardNav {
   width: 100%;
   background-color: var(--light-blue);
@@ -10,7 +16,6 @@
   margin: 10px 20px;
   border-radius: 15px;
   border: 1px solid var(--dark-blue);
-  font-size: 0.8em;
   cursor: pointer;
 
   text-decoration: none;

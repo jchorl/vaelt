@@ -16,7 +16,7 @@ import (
 
 const (
 	// LoginPasswordEntryTitle is the title used for entries that contain a user's password to log in
-	LoginPasswordEntryTitle = "Login Password"
+	LoginPasswordEntryTitle = "Vaelt Login Password"
 	entryEntityType         = "entry"
 )
 

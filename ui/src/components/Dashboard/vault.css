@@ -1,0 +1,23 @@
+.vault {
+  flex-grow: 1;
+  display: flex;
+}
+
+.vault .entryList {
+  background-color: white;
+  min-width: 280px;
+}
+
+.vault .entryList .entry {
+  padding: 20px;
+  cursor: pointer;
+  border-left: 5px solid white;
+}
+
+.vault .entryList .entry:hover {
+  border-left: 5px solid var(--light-purple);
+}
+
+.vault .entryList .entry.active {
+  border-left: 5px solid var(--purple);
+}
