@@ -21,6 +21,9 @@ class Vault extends Component {
         }).isRequired,
     }
 
+    // just some random title to signify a new entry as being selected
+    static newEntryTitle = 'b8e1502e-7f5f-4d36-97d3-8ce11aadcfb0';
+
     constructor(props) {
         super(props);
 
@@ -38,10 +41,14 @@ class Vault extends Component {
         this.selectDefaultEntry(nextProps);
     }
 
-    selectDefaultEntry = (props) => {
+    selectDefaultEntry = props => {
         if (!this.state.selected && !props.vault.get('entries').isEmpty()) {
             this.setState({ selected: props.vault.get('entries').keySeq().first() });
         }
+    }
+
+    select = title => () => {
+        this.setState({ selected: title });
     }
 
     render() {
@@ -51,12 +58,16 @@ class Vault extends Component {
         return (
             <div className="vault">
                 <div className="entryList">
-                    <div className="entry">New</div>
+                    <div className={ classNames("entry", { active: selected === Vault.newEntryTitle }) } onClick={ this.select(Vault.newEntryTitle) }>New</div>
                     { entries.keySeq().map(title => (
-                    <div key={ title } className={ classNames("entry", { active: selected === title }) }>{ title }</div>
+                    <div key={ title } className={ classNames("entry", { active: selected === title }) } onClick={ this.select(title) }>{ title }</div>
                     )) }
                 </div>
-                { selected ? <VaultEntry title={ selected } entries={ entries.get(selected) } /> : null }
+                { selected
+                  ? selected !== Vault.newEntryTitle
+                  ? <VaultEntry title={ selected } entries={ entries.get(selected) } />
+                  : null
+                  : null }
             </div>
             );
     }
