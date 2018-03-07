@@ -1,4 +1,4 @@
-import { Map, List } from 'immutable';
+import { Map, OrderedMap } from 'immutable';
 import {
     FETCH_VAULT_ALL_REQUEST,
     FETCH_VAULT_ALL_SUCCESS,
@@ -8,15 +8,16 @@ import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
 const defaultState = Map({
     isFetching: false,
-    entries: List(),
+    entries: OrderedMap(),
 });
 export default function vault(state = defaultState, action) {
     switch (action.type) {
         case FETCH_VAULT_ALL_REQUEST:
             return state.set('isFetching', true);
         case FETCH_VAULT_ALL_SUCCESS:
-            return state.merge({
-                entries: action.entries,
+            return Map({
+                // entries need to be keyed by title
+                entries: action.entries.groupBy(e => e.get('title')),
                 receivedAt: action.receivedAt,
                 isFetching: false,
             });

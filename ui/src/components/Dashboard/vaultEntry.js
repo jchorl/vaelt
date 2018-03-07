@@ -5,17 +5,20 @@ import './vaultEntry.css';
 
 export default class Entry extends Component {
     static propTypes = {
-        entry: ImmutablePropTypes.contains({
-            title: PropTypes.string.isRequired,
-        }).isRequired,
+        entries: ImmutablePropTypes.listOf(
+            ImmutablePropTypes.contains({
+                title: PropTypes.string.isRequired,
+            }).isRequired,
+        ).isRequired,
+        title: PropTypes.string.isRequired,
     }
 
     render() {
-        const { entry } = this.props;
+        const { title } = this.props;
 
         return (
             <div className="vaultEntry">
-                { entry.get('title') }
+                { title }
             </div>
             );
     }

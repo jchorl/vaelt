@@ -10,10 +10,13 @@ import './vault.css';
 class Vault extends Component {
     static propTypes = {
         vault: ImmutablePropTypes.contains({
-            entries: ImmutablePropTypes.listOf(
-                ImmutablePropTypes.contains({
-                    title: PropTypes.string.isRequired,
-                }).isRequired,
+            entries: ImmutablePropTypes.orderedMapOf(
+                ImmutablePropTypes.listOf(
+                    ImmutablePropTypes.contains({
+                        title: PropTypes.string.isRequired,
+                    }).isRequired,
+                ).isRequired,
+                PropTypes.string.isRequired,
             ).isRequired,
         }).isRequired,
     }
@@ -37,7 +40,7 @@ class Vault extends Component {
 
     selectDefaultEntry = (props) => {
         if (!this.state.selected && !props.vault.get('entries').isEmpty()) {
-            this.setState({ selected: props.vault.get('entries').first() });
+            this.setState({ selected: props.vault.get('entries').keySeq().first() });
         }
     }
 
@@ -49,11 +52,11 @@ class Vault extends Component {
             <div className="vault">
                 <div className="entryList">
                     <div className="entry">New</div>
-                    { entries.map(e => (
-                    <div key={ e.get('title') } className={ classNames("entry", { active: selected === e }) }>{ e.get('title') }</div>
+                    { entries.keySeq().map(title => (
+                    <div key={ title } className={ classNames("entry", { active: selected === title }) }>{ title }</div>
                     )) }
                 </div>
-                { selected ? <VaultEntry entry={ selected } /> : null }
+                { selected ? <VaultEntry title={ selected } entries={ entries.get(selected) } /> : null }
             </div>
             );
     }
