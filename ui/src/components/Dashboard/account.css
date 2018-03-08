@@ -1,0 +1,17 @@
+.account {
+  display: flex;
+  justify-content: center;
+}
+
+.account .accountContainer {
+  margin: 40px;
+  min-width: 500px;
+}
+
+.account .u2fToggle {
+  display: flex;
+}
+
+.account .u2fToggle .u2fEnabledText {
+  line-height: 1.5em;
+}

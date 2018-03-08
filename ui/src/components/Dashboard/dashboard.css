@@ -7,6 +7,8 @@
 .dashboard .dashboardNav {
   width: 100%;
   background-color: var(--light-blue);
+  flex-shrink: 0;
+
   display: flex;
   justify-content: center;
 }

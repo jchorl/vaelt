@@ -1,8 +1,4 @@
 .loginRegister {
-  background-color: #FFFC;
-  padding: 50px 60px;
-  box-shadow: rgba(0,0,0,0.1) 0 0 35px;
-  border-radius: 4px;
   display: flex;
   flex-direction: column;
 }

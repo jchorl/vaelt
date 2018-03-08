@@ -53,7 +53,7 @@ class LoginRegister extends Component {
         const { isRegister } = this.state;
         const { user } = this.props;
         return (
-            <div className="loginRegister">
+            <div className="loginRegister whiteContainer">
                 {
                 !user.has('receivedAt')
                 ? (

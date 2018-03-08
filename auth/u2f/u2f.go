@@ -89,6 +89,8 @@ func RegisterResponse(c echo.Context) error {
 		return err
 	}
 
+	// TODO make u2f required
+
 	return c.NoContent(http.StatusOK)
 }
 

@@ -24,12 +24,14 @@ class Register extends Component {
         }
     }
 
-    handleEmailChange = event => {
-        this.setState({ email: event.target.value });
-    }
+    handleInputChange = event => {
+        const target = event.target;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+        const name = target.name;
 
-    handlePasswordChange = event => {
-        this.setState({ password: event.target.value });
+        this.setState({
+            [name]: value,
+        });
     }
 
     submit = e => {
@@ -52,8 +54,8 @@ class Register extends Component {
                 <div className="verificationText">We've sent you a verification email. Please click that link to activate your account.</div>
                 ) : (
                 <div className="inputContainer">
-                    <input type="text" value={ email } onChange={ this.handleEmailChange } placeholder="Email" />
-                    <input type="password" value={ password } onChange={ this.handlePasswordChange } placeholder="Password" />
+                    <input type="text" name="email" value={ email } onChange={ this.handleInputChange } placeholder="Email" />
+                    <input type="password" name="password" value={ password } onChange={ this.handleInputChange } placeholder="Password" />
                     { register.has('error') ? (
                     <div className="errorText">
                         { register.getIn(['error', 'message']) }

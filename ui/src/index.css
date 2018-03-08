@@ -62,3 +62,48 @@ button {
 button:focus {
   outline:0;
 }
+
+input[type="checkbox"] {
+  box-sizing: border-box;
+  display: none;
+  padding: 0;
+}
+input[type="checkbox"] + label.toggle {
+  margin: 0 10px;
+  background: var(--mid-grey);
+  border-radius: 2em;
+  padding: 2px;
+  transition: all .4s ease;
+  outline: 0;
+  display: block;
+  width: 3em;
+  height: 1.5em;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+}
+input[type="checkbox"] + label.toggle:after {
+  border-radius: 50%;
+  background: white;
+  transition: all .2s ease;
+  position: relative;
+  display: block;
+  content: "";
+  width: 50%;
+  height: 100%;
+  left: 0;
+}
+input[type="checkbox"]:checked + label.toggle {
+  background: #9FD6AE;
+}
+input[type="checkbox"]:checked + label.toggle:after {
+  left: 50%;
+}
+
+.whiteContainer {
+  background-color: #FFFC;
+  padding: 50px 60px;
+  box-shadow: rgba(0,0,0,0.1) 0 0 35px;
+  border-radius: 4px;
+}

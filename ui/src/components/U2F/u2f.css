@@ -1,0 +1,25 @@
+.u2f {
+  border-radius: 4px;
+  min-width: 200px;
+  min-height: 200px;
+  background: var(--light-grey);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u2f .tapStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.u2f .retryButton {
+  margin-top: 10px;
+}
+
+.u2f .horizontalCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

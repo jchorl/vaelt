@@ -23,12 +23,14 @@ class Login extends Component {
         }
     }
 
-    handleEmailChange = event => {
-        this.setState({ email: event.target.value });
-    }
+    handleInputChange = event => {
+        const target = event.target;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+        const name = target.name;
 
-    handlePasswordChange = event => {
-        this.setState({ password: event.target.value });
+        this.setState({
+            [name]: value,
+        });
     }
 
     submit = e => {
@@ -46,8 +48,8 @@ class Login extends Component {
 
         return (
             <form className="inputContainer">
-                <input type="text" value={ email } onChange={ this.handleEmailChange } placeholder="Email" />
-                <input type="password" value={ password } onChange={ this.handlePasswordChange } placeholder="Password" />
+                <input type="text" name="email" value={ email } onChange={ this.handleInputChange } placeholder="Email" />
+                <input type="password" name="password" value={ password } onChange={ this.handleInputChange } placeholder="Password" />
                 { login.has('error') ? (
                 <div className="errorText">
                     { login.getIn(['error', 'message']) }
