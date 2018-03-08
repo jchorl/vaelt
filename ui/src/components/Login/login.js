@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 import { login } from '../../actions/login';
+import LoginU2F from '../U2F/login';
 
 class Login extends Component {
     static propTypes = {
@@ -20,6 +21,12 @@ class Login extends Component {
         this.state = {
             email: "",
             password: "",
+        }
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (!this.props.login.has('error') && nextProps.login.getIn(['error', 'message']) === 'U2F required') {
+            this.setState({ u2f: true });
         }
     }
 
@@ -44,9 +51,9 @@ class Login extends Component {
 
     render() {
         const { login } = this.props;
-        const { email, password } = this.state;
+        const { email, password, u2f } = this.state;
 
-        return (
+        return !u2f ? (
             <form className="inputContainer">
                 <input type="text" name="email" value={ email } onChange={ this.handleInputChange } placeholder="Email" />
                 <input type="password" name="password" value={ password } onChange={ this.handleInputChange } placeholder="Password" />
@@ -57,7 +64,7 @@ class Login extends Component {
                 ) : null }
                 <button type="submit" onClick={ this.submit } className="submitButton">{ 'Login' }</button>
             </form>
-        );
+            ) : <LoginU2F />;
     }
 }
 

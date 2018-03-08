@@ -101,6 +101,7 @@ func basicAuthMiddlewareWrite(next echo.HandlerFunc) echo.HandlerFunc {
 
 			// check if the user requires u2f
 			if user.U2fEnforced {
+				c.Response().Header().Set("WWW-Authenticate", "U2F")
 				// mark the session as u2f in progress
 				sessions.UpdateSession(c, userKey, scopes.U2fForWrite)
 				// return 401 with a useful error

@@ -58,7 +58,7 @@ func RegisterHandler(c echo.Context) error {
 	}
 
 	// make a full key for a user
-	userKey := datastore.NewKey(ctx, userEntityType, email, 0, nil)
+	userKey := userKeyFromEmail(ctx, email)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Errorf(ctx, "Unable to hash password")
@@ -76,13 +76,12 @@ func RegisterHandler(c echo.Context) error {
 	}
 
 	// set the password and save the user
-	user := User{
+	user := &User{
 		Email:    email,
 		Password: passwordKey,
 	}
-	userKey, err = datastore.Put(ctx, userKey, &user)
+	userKey, err = Save(ctx, user)
 	if err != nil {
-		log.Errorf(ctx, "Unable to store the user: %+v", err)
 		return err
 	}
 
@@ -90,7 +89,6 @@ func RegisterHandler(c echo.Context) error {
 	if err != nil {
 		log.Errorf(ctx, "Error sending verification email to user: %+v", err)
 
-		// if we cant send verification email, just verify them
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email. You can log in, but will have limited access until you verify your account. You can log in to request another verification email.")
 	}
 
@@ -173,4 +171,20 @@ func GetUserByKey(c echo.Context, key *datastore.Key) (*User, error) {
 		log.Errorf(ctx, "Unable to fetch user by key: %+v", err)
 	}
 	return u, err
+}
+
+// Save saves a user
+func Save(ctx context.Context, user *User) (*datastore.Key, error) {
+	userKey := userKeyFromEmail(ctx, user.Email)
+	userKey, err := datastore.Put(ctx, userKey, user)
+	if err != nil {
+		log.Errorf(ctx, "Unable to store the user: %+v", err)
+		return nil, err
+	}
+
+	return userKey, nil
+}
+
+func userKeyFromEmail(ctx context.Context, email string) *datastore.Key {
+	return datastore.NewKey(ctx, userEntityType, email, 0, nil)
 }

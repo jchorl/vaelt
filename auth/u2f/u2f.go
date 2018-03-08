@@ -17,6 +17,7 @@ import (
 	"auth/scopes"
 	"auth/sessions"
 	"config"
+	"users"
 )
 
 const (
@@ -89,7 +90,16 @@ func RegisterResponse(c echo.Context) error {
 		return err
 	}
 
-	// TODO make u2f required
+	// force u2f for the user
+	user, err := users.GetUserByKey(c, userKey)
+	if err != nil {
+		return err
+	}
+	user.U2fEnforced = true
+	_, err = users.Save(ctx, user)
+	if err != nil {
+		return err
+	}
 
 	return c.NoContent(http.StatusOK)
 }
@@ -171,7 +181,9 @@ func SignResponse(c echo.Context) error {
 			} else if scope == scopes.U2fForWrite {
 				sessions.UpdateSession(c, userKey, scopes.Write)
 			}
-			return c.NoContent(http.StatusNoContent)
+
+			// return the user, because this is called at login
+			return users.GetUserHandler(c)
 		}
 	}
 

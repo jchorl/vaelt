@@ -31,14 +31,12 @@
 
 .loginRegister .verificationText {
   color: var(--dark-grey);
-  font-size: 0.8em;
   width: 220px;
   margin: 10px;
 }
 
 .loginRegister .errorText {
   width: 220px;
-  font-size: 0.7em;
   color: var(--red);
 }
 

@@ -66,9 +66,8 @@ func VerifyUserHandler(c echo.Context) error {
 	}
 
 	user.Verified = true
-	_, err = datastore.Put(ctx, userKey, user)
+	_, err = Save(ctx, user)
 	if err != nil {
-		log.Errorf(ctx, "Unable to store the user: %+v", err)
 		return err
 	}
 
