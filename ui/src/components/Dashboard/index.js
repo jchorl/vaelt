@@ -7,7 +7,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import classNames from 'classnames';
 import { fetchUserIfNeeded } from '../../actions/user';
 import Vault from './vault';
-import Account from './account';
+import Account from '../Account';
 import './dashboard.css';
 
 class Dashboard extends Component {

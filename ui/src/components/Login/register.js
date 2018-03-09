@@ -28,8 +28,9 @@ class Register extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (!this.props.register.has('error') && nextProps.register.has('error')
-            || !this.props.register.has('receivedAt') && nextProps.register.has('receivedAt')) {
+        // if there is an error or success, loading is done
+        if ((!this.props.register.has('error') && nextProps.register.has('error'))
+            || (!this.props.register.has('receivedAt') && nextProps.register.has('receivedAt'))) {
             this.setState({ loading: false });
         }
     }
