@@ -19,6 +19,7 @@ const (
 // Private keys should all be protected by a passphrase.
 type Key struct {
 	ID         *datastore.Key `datastore:"-" json:"id"`
+	Name       string         `json:"name"`
 	URL        string         `json:"url"`
 	ArmoredKey string         `datastore:",noindex" json:"armoredKey"`
 	Type       string         `json:"type"`
