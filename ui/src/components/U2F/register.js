@@ -13,7 +13,6 @@ const TAP_REQUIRED = Symbol('TAP_REQUIRED');
 const TAP_EXPIRED = Symbol('TAP_EXPIRED');
 const DEVICE_INELIGIBLE = Symbol('DEVICE_INELIGIBLE');
 const FAILED = Symbol('FAILED');
-const SUCCEEDED = Symbol('SUCCEEDED');
 
 class RegisterU2F extends Component {
     static propTypes = {
@@ -44,7 +43,7 @@ class RegisterU2F extends Component {
         } else if (nextProps.u2f.has('error') && this.state.state !== FAILED) {
             this.setState({ state: FAILED });
         } else if (nextProps.u2f.has('complete')) {
-            this.setState({ state: SUCCEEDED });
+            this.setState({ state: NOT_STARTED });
         }
     }
 
@@ -74,7 +73,7 @@ class RegisterU2F extends Component {
         const { fetchRegisterChallenge } = this.props;
 
         return (
-            <div className="u2f">
+            <div className="u2f u2fRegister">
                 {
                 state === NOT_STARTED
                 ? <button onClick={ fetchRegisterChallenge }>Begin U2F Registration</button>
@@ -106,8 +105,6 @@ class RegisterU2F extends Component {
                     <button className="retryButton" onClick={ fetchRegisterChallenge }>Try Again</button>
                 </div>
                 )
-                : state === SUCCEEDED
-                ? <div>Success!</div>
                 : null
                 }
             </div>

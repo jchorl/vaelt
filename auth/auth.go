@@ -101,7 +101,7 @@ func basicAuthMiddlewareWrite(next echo.HandlerFunc) echo.HandlerFunc {
 
 			// check if the user requires u2f
 			if user.U2fEnforced {
-				c.Response().Header().Set("WWW-Authenticate", "U2F")
+				c.Response().Header().Set(echo.HeaderWWWAuthenticate, "U2F")
 				// mark the session as u2f in progress
 				sessions.UpdateSession(c, userKey, scopes.U2fForWrite)
 				// return 401 with a useful error
@@ -142,7 +142,11 @@ func readAuthCheckMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// check for read scope
 		_, userKeyOk := sessions.GetUserKeyFromContext(c)
 		if !userKeyOk || !hasScope(c, scopes.Read, scopes.Write) {
-			if u2f.HasRegistrations(c) {
+			numRegistrations, err := u2f.NumRegistrations(c)
+			if err != nil {
+				return err
+			}
+			if numRegistrations > 0 {
 				c.Response().Header().Add(echo.HeaderWWWAuthenticate, "U2F")
 			}
 			return echo.NewHTTPError(http.StatusUnauthorized, "Unable to authenticate")

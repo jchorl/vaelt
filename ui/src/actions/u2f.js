@@ -1,4 +1,4 @@
-import { jsonResponse, noContentResponse } from './parseResponse';
+import { jsonResponse, stringResponse } from './parseResponse';
 
 export const FETCH_REGISTER_CHALLENGE_REQUEST = 'FETCH_REGISTER_CHALLENGE_REQUEST';
 function requestRegisterChallenge() {
@@ -49,9 +49,10 @@ function requestRegisterFinish() {
 }
 
 export const FETCH_REGISTER_FINISH_SUCCESS = 'FETCH_REGISTER_FINISH_SUCCESS';
-function receiveRegisterFinishSuccess() {
+function receiveRegisterFinishSuccess(registration) {
     return {
         type: FETCH_REGISTER_FINISH_SUCCESS,
+        registration,
         receivedAt: Date.now(),
     }
 }
@@ -77,7 +78,7 @@ export function fetchRegisterFinish(resp) {
             headers,
         })
             .then(
-                noContentResponse(dispatch, receiveRegisterFinishSuccess, receiveRegisterFinishFailure)
+                jsonResponse(dispatch, receiveRegisterFinishSuccess, receiveRegisterFinishFailure)
             );
     };
 }
@@ -161,6 +162,93 @@ export function fetchSignFinish(resp) {
         })
             .then(
                 jsonResponse(dispatch, receiveSignFinishSuccess, receiveSignFinishFailure)
+            );
+    };
+}
+
+export const FETCH_REGISTRATIONS_REQUEST = 'FETCH_REGISTRATIONS_REQUEST';
+function requestRegistrations() {
+    return {
+        type: FETCH_REGISTRATIONS_REQUEST,
+    }
+}
+
+export const FETCH_REGISTRATIONS_SUCCESS = 'FETCH_REGISTRATIONS_SUCCESS';
+function receiveRegistrationsSuccess(registrations) {
+    return {
+        type: FETCH_REGISTRATIONS_SUCCESS,
+        registrations,
+        receivedAt: Date.now(),
+    }
+}
+
+export const FETCH_REGISTRATIONS_FAILURE = 'FETCH_REGISTRATIONS_FAILURE';
+function receiveRegistrationsFailure(error) {
+    return {
+        type: FETCH_REGISTRATIONS_FAILURE,
+        error,
+    }
+}
+
+export function fetchRegistrationsIfNeeded() {
+    return function(dispatch, getState) {
+        const { u2f } = getState();
+        if (u2f.getIn(['registrations', 'receivedAt'])) {
+            return Promise.resolve();
+        }
+
+        dispatch(requestRegistrations());
+
+        let headers = new Headers();
+        headers.append('Content-Type', 'application/json');
+        fetch("/api/u2f/registrations", {
+            credentials: 'same-origin',
+            method: 'GET',
+            headers,
+        })
+            .then(
+                jsonResponse(dispatch, receiveRegistrationsSuccess, receiveRegistrationsFailure)
+            );
+    };
+}
+
+export const FETCH_DELETE_REGISTRATION_REQUEST = 'FETCH_DELETE_REGISTRATION_REQUEST';
+function requestDeleteRegistration() {
+    return {
+        type: FETCH_DELETE_REGISTRATION_REQUEST,
+    }
+}
+
+export const FETCH_DELETE_REGISTRATION_SUCCESS = 'FETCH_DELETE_REGISTRATION_SUCCESS';
+function receiveDeleteRegistrationSuccess(id) {
+    return {
+        type: FETCH_DELETE_REGISTRATION_SUCCESS,
+        id,
+        receivedAt: Date.now(),
+    }
+}
+
+export const FETCH_DELETE_REGISTRATION_FAILURE = 'FETCH_DELETE_REGISTRATION_FAILURE';
+function receiveDeleteRegistrationFailure(error) {
+    return {
+        type: FETCH_DELETE_REGISTRATION_FAILURE,
+        error,
+    }
+}
+
+export function deleteRegistration(id) {
+    return function(dispatch) {
+        dispatch(requestDeleteRegistration());
+
+        let headers = new Headers();
+        headers.append('Content-Type', 'text/plain');
+        fetch(`/api/u2f/registrations/${id}`, {
+            credentials: 'same-origin',
+            method: 'DELETE',
+            headers,
+        })
+            .then(
+                stringResponse(dispatch, receiveDeleteRegistrationSuccess, receiveDeleteRegistrationFailure)
             );
     };
 }

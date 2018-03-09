@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo"
 	"github.com/tstranex/u2f"
@@ -19,6 +20,20 @@ import (
 	"config"
 	"users"
 )
+
+// Registration extends u2f.Registration to include the time created
+// and ignore a bunch of fields in json. u2f.Registration also cant
+// be put into datastore so this struct has fields that can.
+type Registration struct {
+	U2fRegistration *u2f.Registration `datastore:"-" json:"-"`
+
+	ID              *datastore.Key `datastore:"-" json:"id"`
+	Raw             []byte         `json:"-"`
+	KeyHandle       []byte         `json:"-"`
+	PubKey          []byte         `json:"-"`
+	AttestationCert []byte         `json:"-"`
+	CreatedAt       time.Time      `json:"createdAt"`
+}
 
 const (
 	challengeEntityType    = "u2fChallenge"
@@ -50,7 +65,7 @@ func RegisterRequest(c echo.Context) error {
 		return err
 	}
 
-	req := u2f.NewWebRegisterRequest(challenge, registrations)
+	req := u2f.NewWebRegisterRequest(challenge, u2fRegistrationsFromRegistrations(registrations))
 	return c.JSON(http.StatusOK, req)
 }
 
@@ -74,12 +89,19 @@ func RegisterResponse(c echo.Context) error {
 		return err
 	}
 
-	reg, err := u2f.Register(regResp, *challenge, nil)
+	u2fReg, err := u2f.Register(regResp, *challenge, nil)
 	if err != nil {
 		log.Errorf(ctx, "Error registering u2f: %v", err)
 		return err
 	}
 
+	reg, err := u2fToRegistration(u2fReg)
+	if err != nil {
+		log.Errorf(ctx, "Error converting u2fReg to reg: %v", err)
+		return err
+	}
+
+	reg.CreatedAt = time.Now()
 	err = saveRegistration(ctx, reg, userKey)
 	if err != nil {
 		return err
@@ -101,7 +123,7 @@ func RegisterResponse(c echo.Context) error {
 		return err
 	}
 
-	return c.NoContent(http.StatusOK)
+	return c.JSON(http.StatusOK, reg)
 }
 
 func SignRequest(c echo.Context) error {
@@ -133,7 +155,7 @@ func SignRequest(c echo.Context) error {
 		return err
 	}
 
-	req := challenge.SignRequest(registrations)
+	req := challenge.SignRequest(u2fRegistrationsFromRegistrations(registrations))
 	return c.JSON(http.StatusOK, req)
 }
 
@@ -169,7 +191,7 @@ func SignResponse(c echo.Context) error {
 			continue
 		}
 
-		newCounter, authErr := reg.Authenticate(signResp, *challenge, counter)
+		newCounter, authErr := reg.U2fRegistration.Authenticate(signResp, *challenge, counter)
 		if authErr == nil {
 			err = saveCounter(ctx, reg.KeyHandle, newCounter, userKey)
 			if err != nil {
@@ -190,6 +212,88 @@ func SignResponse(c echo.Context) error {
 	err = errors.New("Unable to verify against registrations")
 	c.Error(err)
 	return err
+}
+
+// GetRegistrations gets all of a users registrations
+func GetRegistrations(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Unable to get userKey when getting registrations")
+	}
+
+	// registrations is a list of the users existing registrations
+	registrations, err := fetchRegistrations(ctx, userKey)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, registrations)
+}
+
+// DeleteRegistration deletes a registration
+func DeleteRegistration(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Unable to get userKey when getting registrations")
+	}
+
+	regKey, err := datastore.DecodeKey(c.Param("id"))
+	if err != nil {
+		log.Errorf(ctx, "Unable to decode registration key to delete: %+v", err)
+		return err
+	}
+
+	if !regKey.Parent().Equal(userKey) {
+		return echo.ErrNotFound
+	}
+
+	// if this is their only registration, first disable u2f
+	// so the user doesnt get permanently locked out
+	numRegistrations, err := NumRegistrations(c)
+	if err != nil {
+		return err
+	}
+	if numRegistrations == 1 {
+		user, err := users.GetUserByKey(c, userKey)
+		if err != nil {
+			return err
+		}
+		user.U2fEnforced = false
+		_, err = users.Save(ctx, user)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = datastore.Delete(ctx, regKey)
+	if err != nil {
+		log.Errorf(ctx, "Unable to delete registered key: %+v", err)
+		return err
+	}
+
+	return c.String(http.StatusOK, c.Param("id"))
+}
+
+// NumRegistrations returns the number of registrations that a user has
+func NumRegistrations(c echo.Context) (int, error) {
+	ctx := appengine.NewContext(c.Request())
+
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return 0, errors.New("Could not get user key from context")
+	}
+
+	q := datastore.NewQuery(registrationEntityType).Ancestor(userKey).KeysOnly()
+	keys, err := q.GetAll(ctx, nil)
+	if err != nil {
+		log.Errorf(ctx, "Unable to get number of registrations for user: %+v", err)
+		return 0, err
+	}
+	return len(keys), nil
 }
 
 func saveChallenge(ctx context.Context, challenge *u2f.Challenge, userKey *datastore.Key) error {
@@ -217,59 +321,39 @@ func fetchChallenge(ctx context.Context, userKey *datastore.Key) (*u2f.Challenge
 	return &challenge, nil
 }
 
-func saveRegistration(ctx context.Context, registration *u2f.Registration, userKey *datastore.Key) error {
-	regDB, err := registrationToDB(registration)
-	if err != nil {
-		log.Errorf(ctx, "Error converting u2f registration to db: %+v", err)
-		return err
-	}
-
+func saveRegistration(ctx context.Context, registration *Registration, userKey *datastore.Key) error {
 	k := datastore.NewIncompleteKey(ctx, registrationEntityType, userKey)
-	_, err = datastore.Put(ctx, k, regDB)
+	key, err := datastore.Put(ctx, k, registration)
 	if err != nil {
 		log.Errorf(ctx, "Error putting to registrations: %+v", err)
 		return err
 	}
+	registration.ID = key
 
 	return nil
 }
 
-func fetchRegistrations(ctx context.Context, userKey *datastore.Key) ([]u2f.Registration, error) {
-	registrations := []u2f.Registration{}
-	registrationDBs := []registrationDB{}
+func fetchRegistrations(ctx context.Context, userKey *datastore.Key) ([]Registration, error) {
+	registrations := []Registration{}
 
 	q := datastore.NewQuery(registrationEntityType).Ancestor(userKey)
-	_, err := q.GetAll(ctx, &registrationDBs)
+	keys, err := q.GetAll(ctx, &registrations)
 	if err != nil {
 		log.Errorf(ctx, "Failed to fetch challenge from db: %+v", err)
 		return nil, err
 	}
 
-	for _, reg := range registrationDBs {
-		parsed, err := registrationFromDB(&reg)
+	// use idx because regs are modified in the loop
+	for idx, _ := range registrations {
+		err = (&registrations[idx]).populateU2fInRegistration()
 		if err != nil {
 			log.Errorf(ctx, "Failed to parse registration from db: %+v", err)
 			return nil, err
 		}
-
-		registrations = append(registrations, *parsed)
+		registrations[idx].ID = keys[idx]
 	}
 
 	return registrations, nil
-}
-
-// HasRegistrations checks to see if a user has registrations available
-func HasRegistrations(c echo.Context) bool {
-	ctx := appengine.NewContext(c.Request())
-
-	userKey, ok := sessions.GetUserKeyFromContext(c)
-	if !ok {
-		return false
-	}
-
-	q := datastore.NewQuery(registrationEntityType).Ancestor(userKey).KeysOnly()
-	keys, err := q.GetAll(ctx, nil)
-	return err == nil && len(keys) > 0
 }
 
 type counter struct {
@@ -303,17 +387,7 @@ func fetchCounter(ctx context.Context, keyHandle []byte, userKey *datastore.Key)
 	return converted, nil
 }
 
-// elliptic curve public keys don't marshal properly for datastore
-// so we can use a DAO instead. This mirrors u2f.Registration
-type registrationDB struct {
-	Raw       []byte
-	KeyHandle []byte
-	PubKey    []byte
-	// AttestationCert can be nil for Authenticate requests.
-	AttestationCert []byte
-}
-
-func registrationToDB(orig *u2f.Registration) (*registrationDB, error) {
+func u2fToRegistration(orig *u2f.Registration) (*Registration, error) {
 	pubKeyB, err := x509.MarshalPKIXPublicKey(&orig.PubKey)
 	if err != nil {
 		return nil, err
@@ -324,36 +398,46 @@ func registrationToDB(orig *u2f.Registration) (*registrationDB, error) {
 		attestationCertB = orig.AttestationCert.Raw
 	}
 
-	db := registrationDB{
+	converted := Registration{
+		U2fRegistration: orig,
 		Raw:             orig.Raw,
 		KeyHandle:       orig.KeyHandle,
 		PubKey:          pubKeyB,
 		AttestationCert: attestationCertB,
 	}
-	return &db, nil
+	return &converted, nil
 }
 
-func registrationFromDB(db *registrationDB) (*u2f.Registration, error) {
-	pubKey, err := x509.ParsePKIXPublicKey(db.PubKey)
+func (r *Registration) populateU2fInRegistration() error {
+	pubKey, err := x509.ParsePKIXPublicKey(r.PubKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var cert *x509.Certificate
-	if db.AttestationCert != nil {
-		cert, err = x509.ParseCertificate(db.AttestationCert)
+	if r.AttestationCert != nil {
+		cert, err = x509.ParseCertificate(r.AttestationCert)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	typedCert := pubKey.(*ecdsa.PublicKey)
 
-	reg := u2f.Registration{
-		Raw:             db.Raw,
-		KeyHandle:       db.KeyHandle,
+	u2fReg := &u2f.Registration{
+		Raw:             r.Raw,
+		KeyHandle:       r.KeyHandle,
 		PubKey:          *typedCert,
 		AttestationCert: cert,
 	}
-	return &reg, nil
+	r.U2fRegistration = u2fReg
+	return nil
+}
+
+func u2fRegistrationsFromRegistrations(regs []Registration) []u2f.Registration {
+	u2fRegistrations := []u2f.Registration{}
+	for _, reg := range regs {
+		u2fRegistrations = append(u2fRegistrations, *reg.U2fRegistration)
+	}
+	return u2fRegistrations
 }

@@ -22,12 +22,11 @@ const (
 
 // An Entry is just information stored in the vault
 type Entry struct {
-	ID               *datastore.Key `json:"id",datastore:"__key__"`
-	Title            string         `json:"title"`
-	EncryptedMessage []byte         `json:"encryptedMessage"`
-	Version          int            `json:"version"`
-	Domain           string         `json:"domain,omitempty"`
-	Created          time.Time      `json:"created"`
+	Title            string    `json:"title"`
+	EncryptedMessage []byte    `json:"encryptedMessage"`
+	Version          int       `json:"version"`
+	Domain           string    `json:"domain,omitempty"`
+	Created          time.Time `json:"created"`
 }
 
 // PostHandler posts to vault
@@ -131,7 +130,6 @@ func Put(ctx context.Context, entry *Entry, user *datastore.Key) (*datastore.Key
 		return nil, err
 	}
 
-	entry.ID = k
 	return k, nil
 }
 

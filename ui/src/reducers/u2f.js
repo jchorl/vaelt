@@ -1,4 +1,4 @@
-import { Map } from 'immutable';
+import { List, Map } from 'immutable';
 import {
     FETCH_REGISTER_CHALLENGE_REQUEST,
     FETCH_REGISTER_CHALLENGE_SUCCESS,
@@ -6,6 +6,11 @@ import {
     FETCH_REGISTER_FINISH_REQUEST,
     FETCH_REGISTER_FINISH_SUCCESS,
     FETCH_REGISTER_FINISH_FAILURE,
+    FETCH_REGISTRATIONS_REQUEST,
+    FETCH_REGISTRATIONS_SUCCESS,
+    FETCH_REGISTRATIONS_FAILURE,
+    FETCH_DELETE_REGISTRATION_SUCCESS,
+    FETCH_DELETE_REGISTRATION_FAILURE,
     FETCH_SIGN_CHALLENGE_REQUEST,
     FETCH_SIGN_CHALLENGE_SUCCESS,
     FETCH_SIGN_CHALLENGE_FAILURE,
@@ -75,9 +80,44 @@ function sign(state = defaultSignState, action) {
     }
 }
 
+const defaultRegistrationsState = Map({
+    isFetching: false,
+    registrations: List(),
+});
+
+function registrations(state = defaultRegistrationsState, action) {
+    switch (action.type) {
+        case FETCH_REGISTRATIONS_REQUEST:
+            return defaultRegistrationsState.set('isFetching', true);
+        case FETCH_REGISTRATIONS_SUCCESS:
+            return Map({
+                registrations: action.registrations
+                    .map(r => r.update('createdAt', c => new Date(c)))
+                    .sort(r => r.get('createdAt')),
+                receivedAt: action.receivedAt,
+                isFetching: false,
+            });
+        case FETCH_REGISTER_FINISH_SUCCESS: {
+            const registration = action.registration.update('createdAt', c => new Date(c));
+            return state.update('registrations',
+                registrations => registrations.push(registration).sort(r => r.get('createdAt'))
+            );
+        }
+        case FETCH_REGISTRATIONS_FAILURE:
+            return defaultState.set('error', action.error);
+        case FETCH_DELETE_REGISTRATION_SUCCESS:
+            return state.update('registrations', registrations => registrations.filter(r => r.get('id') !== action.id));
+        case FETCH_DELETE_REGISTRATION_FAILURE:
+            return defaultState.set('error', action.error);
+        default:
+            return state
+    }
+}
+
 const defaultState = Map({
     register: defaultRegisterState,
     sign: defaultSignState,
+    registrations: defaultRegistrationsState,
 });
 
 export default function u2f(state = defaultState, action) {
@@ -87,6 +127,7 @@ export default function u2f(state = defaultState, action) {
         default:
             return state.merge({
                 register: register(state.get('register'), action),
+                registrations: registrations(state.get('registrations'), action),
                 sign: sign(state.get('sign'), action),
             })
     }

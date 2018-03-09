@@ -33,6 +33,8 @@ func init() {
 	u2fGroup.POST("/register", u2f.RegisterResponse, auth.AuthWriteMiddlewares...)
 	u2fGroup.GET("/sign", u2f.SignRequest, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware, auth.AddUserKeyMiddleware)
 	u2fGroup.POST("/sign", u2f.SignResponse, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware, auth.AddUserKeyMiddleware, auth.VerifyU2fInProgress)
+	u2fGroup.GET("/registrations", u2f.GetRegistrations, auth.AuthReadMiddlewares...)
+	u2fGroup.DELETE("/registrations/:id", u2f.DeleteRegistration, auth.AuthWriteMiddlewares...)
 }
 
 func createMux() *echo.Echo {
