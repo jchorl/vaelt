@@ -4,6 +4,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 import { generateKeyPair } from '../../crypto';
 import { register } from '../../actions/register';
+import LoadingSpinner from '../LoadingSpinner';
 
 class Register extends Component {
     static propTypes = {
@@ -22,6 +23,14 @@ class Register extends Component {
         this.state = {
             email: "",
             password: "",
+            loading: false,
+        }
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (!this.props.register.has('error') && nextProps.register.has('error')
+            || !this.props.register.has('receivedAt') && nextProps.register.has('receivedAt')) {
+            this.setState({ loading: false });
         }
     }
 
@@ -37,6 +46,8 @@ class Register extends Component {
 
     submit = async e => {
         e.preventDefault();
+
+        this.setState({ loading: true });
 
         const { email, password } = this.state;
         const { registerUser } = this.props;
@@ -56,9 +67,9 @@ class Register extends Component {
 
     render() {
         const { register } = this.props;
-        const { email, password } = this.state;
+        const { email, password, loading } = this.state;
 
-        return (
+        return !loading ? (
             <form>
                 { register.has('receivedAt') ?
                 (
@@ -76,7 +87,7 @@ class Register extends Component {
                 </div>
                 ) }
             </form>
-            );
+            ) : <LoadingSpinner />;
     }
 }
 
