@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
+import { generateKeyPair } from '../../crypto';
 import { register } from '../../actions/register';
 
 class Register extends Component {
@@ -34,13 +35,23 @@ class Register extends Component {
         });
     }
 
-    submit = e => {
+    submit = async e => {
         e.preventDefault();
 
         const { email, password } = this.state;
         const { registerUser } = this.props;
 
-        registerUser(email, password);
+        // generate a keypair
+        const key = await generateKeyPair(email, password);
+        const keys = [{
+            armoredKey: key.privateKeyArmored,
+            type: "private",
+        }, {
+            armoredKey: key.publicKeyArmored,
+            type: "public",
+        }];
+
+        registerUser(email, password, keys);
     }
 
     render() {
@@ -72,6 +83,6 @@ class Register extends Component {
 export default connect(
     state => ({ register: state.register }),
     dispatch => ({
-        registerUser: (email, password) => dispatch(register(email, password)),
+        registerUser: (email, password, keys) => dispatch(register(email, password, keys)),
     }),
 )(Register);

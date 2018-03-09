@@ -14,6 +14,7 @@ import (
 
 	"auth/scopes"
 	"auth/sessions"
+	"keystore"
 	"vault"
 )
 
@@ -41,6 +42,12 @@ func RegisterHandler(c echo.Context) error {
 	email, password, ok := c.Request().BasicAuth()
 	if !ok {
 		return echo.NewHTTPError(http.StatusBadRequest, "Unable to get auth info from request")
+	}
+
+	keyPair := []keystore.Key{}
+	err := c.Bind(&keyPair)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Registrations must contain a keypair")
 	}
 
 	// check if the user exists already
@@ -85,6 +92,15 @@ func RegisterHandler(c echo.Context) error {
 		return err
 	}
 
+	// save the keypair
+	for _, key := range keyPair {
+		_, err = keystore.Put(ctx, &key, userKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	// request a verification email
 	err = requestVerification(c, userKey, email)
 	if err != nil {
 		log.Errorf(ctx, "Error sending verification email to user: %+v", err)

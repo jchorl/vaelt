@@ -23,14 +23,16 @@ function receiveRegisterFailure(error) {
     }
 }
 
-export function register(email, password) {
+export function register(email, password, keys) {
     return function(dispatch) {
         dispatch(requestRegister());
 
         let headers = new Headers();
         headers.append('Authorization', 'Basic ' + btoa(email + ":" + password));
+        headers.append('Content-Type', 'application/json');
         return fetch("/api/users", {
             method: 'POST',
+            body: JSON.stringify(keys),
             credentials: 'same-origin',
             headers: headers,
         })
