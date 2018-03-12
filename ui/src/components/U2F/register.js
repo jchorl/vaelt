@@ -76,7 +76,7 @@ class RegisterU2F extends Component {
             <div className="u2f u2fRegister">
                 {
                 state === NOT_STARTED
-                ? <button onClick={ fetchRegisterChallenge }>Begin U2F Registration</button>
+                ? <button className="purple" onClick={ fetchRegisterChallenge }>Begin U2F Registration</button>
                 : state === TAP_REQUIRED
                 ? (
                 <div className="tapStage">

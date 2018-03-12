@@ -193,7 +193,7 @@ function receiveRegistrationsFailure(error) {
 export function fetchRegistrationsIfNeeded() {
     return function(dispatch, getState) {
         const { u2f } = getState();
-        if (u2f.getIn(['registrations', 'receivedAt'])) {
+        if (u2f.getIn(['registrations', 'receivedAt']) || u2f.getIn(['registrations', 'isFetching'])) {
             return Promise.resolve();
         }
 

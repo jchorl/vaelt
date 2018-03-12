@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { fetchAllFromVaultIfNeeded } from '../../actions/vault';
 import VaultEntry from './vaultEntry';
+import NewVaultEntry from './newVaultEntry';
 import './vault.css';
 
 class Vault extends Component {
@@ -18,32 +19,28 @@ class Vault extends Component {
                 ).isRequired,
                 PropTypes.string.isRequired,
             ).isRequired,
+            lastAdded: PropTypes.string,
         }).isRequired,
     }
 
     // just some random title to signify a new entry as being selected
-    static newEntryTitle = 'b8e1502e-7f5f-4d36-97d3-8ce11aadcfb0';
+    static newEntryTitle = Symbol('NEW_ENTRY');
 
     constructor(props) {
         super(props);
 
         this.state = {
-            selected: null,
+            selected: Vault.newEntryTitle,
         }
     }
 
     componentWillMount() {
         this.props.fetchAllFromVaultIfNeeded();
-        this.selectDefaultEntry(this.props);
     }
 
     componentWillReceiveProps(nextProps) {
-        this.selectDefaultEntry(nextProps);
-    }
-
-    selectDefaultEntry = props => {
-        if (!this.state.selected && !props.vault.get('entries').isEmpty()) {
-            this.setState({ selected: props.vault.get('entries').keySeq().first() });
+        if (!this.props.vault.has('lastAdded') && nextProps.vault.has('lastAdded')) {
+            this.setState({ selected: nextProps.vault.get('lastAdded') });
         }
     }
 
@@ -66,7 +63,7 @@ class Vault extends Component {
                 { selected
                   ? selected !== Vault.newEntryTitle
                   ? <VaultEntry title={ selected } entries={ entries.get(selected) } />
-                  : null
+                  : <NewVaultEntry />
                   : null }
             </div>
             );

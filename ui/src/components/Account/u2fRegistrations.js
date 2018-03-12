@@ -60,6 +60,7 @@ class U2fRegistrations extends Component {
         const { registrations } = this.props;
         const { u2fEnforced } = this.state;
 
+        // TODO make the disable switch actually disable
         return (
             <div>
                 <h2>Two-Factor Auth</h2>
@@ -69,16 +70,19 @@ class U2fRegistrations extends Component {
                         <input id="2faCheck" name="u2fEnforced" type="checkbox" checked={ u2fEnforced } onChange={ this.handleInputChange } /><label htmlFor="2faCheck" className="toggle"></label>
                     </div>
                 </div>
-                <div className="u2fRegistrations">
+                {
+                u2fEnforced
+                ? (
+                <div className="greyBox">
                     {
                     !registrations.get('registrations').isEmpty()
                     ? (
                     <div>
                         <div>Registered Devices</div>
-                        <div className="registrationsTable">
+                        <div className="table">
                             {
                             registrations.get('registrations').map(r => (
-                            <div className="u2fRegistration" key={ r.get('id') }>
+                            <div className="tableEntry" key={ r.get('id') }>
                                 <div>{ r.get('createdAt').toLocaleDateString() }</div>
                                 <button className="danger" onClick={ this.deleteU2f(r.get('id')) } >Remove</button>
                             </div>
@@ -91,6 +95,8 @@ class U2fRegistrations extends Component {
                     <div>Register New Device</div>
                     <RegisterU2F />
                 </div>
+                ) : null
+                }
             </div>
             );
     }

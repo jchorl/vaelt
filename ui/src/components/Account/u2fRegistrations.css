@@ -5,26 +5,3 @@
 .account .u2fToggle .u2fEnabledText {
   line-height: 1.5em;
 }
-
-.account .u2fRegistrations {
-  background-color: var(--light-grey);
-  border-left: 2px solid var(--purple);
-  box-sizing: border-box;
-  padding: 20px;
-  margin-top: 10px;
-}
-
-.account .registrationsTable {
-  border-radius: 4px;
-  background-color: white;
-  padding: 5px;
-  margin: 20px 0;
-}
-
-.account .u2fRegistration {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 5px 10px;
-  color: var(--dark-grey);
-}

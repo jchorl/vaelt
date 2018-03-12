@@ -1,6 +1,9 @@
 .loginRegister {
   display: flex;
   flex-direction: column;
+
+  box-sizing: border-box;
+  min-height: 312px;
 }
 
 .loginRegister .toggles {
@@ -37,7 +40,6 @@
 
 .loginRegister .errorText {
   width: 220px;
-  color: var(--red);
 }
 
 .loginRegister button {

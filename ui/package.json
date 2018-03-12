@@ -10,7 +10,7 @@
   "dependencies": {
     "classnames": "^2.2.5",
     "immutable": "^3.8.2",
-    "openpgp": "^2.6.2",
+    "openpgp": "^3.0.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-immutable-proptypes": "^2.1.0",

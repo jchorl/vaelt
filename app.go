@@ -8,6 +8,7 @@ import (
 	"auth"
 	"auth/sessions"
 	"auth/u2f"
+	"keystore"
 	"users"
 	"vault"
 )
@@ -25,7 +26,6 @@ func init() {
 
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)
-	vaultGroup.GET("/:id", vault.GetHandler, auth.AuthReadMiddlewares...)
 	vaultGroup.GET("", vault.GetAllHandler, auth.AuthReadMiddlewares...)
 
 	u2fGroup := e.Group("/api/u2f")
@@ -35,6 +35,11 @@ func init() {
 	u2fGroup.POST("/sign", u2f.SignResponse, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware, auth.AddUserKeyMiddleware, auth.VerifyU2fInProgress)
 	u2fGroup.GET("/registrations", u2f.GetRegistrations, auth.AuthReadMiddlewares...)
 	u2fGroup.DELETE("/registrations/:id", u2f.DeleteRegistration, auth.AuthWriteMiddlewares...)
+
+	keyGroup := e.Group("/api/keys")
+	keyGroup.GET("", keystore.GetAllHandler, auth.AuthReadMiddlewares...)
+	keyGroup.POST("", keystore.PostHandler, auth.AuthWriteMiddlewares...)
+	keyGroup.DELETE("/:id", keystore.RevokeHandler, auth.AuthWriteMiddlewares...)
 }
 
 func createMux() *echo.Echo {

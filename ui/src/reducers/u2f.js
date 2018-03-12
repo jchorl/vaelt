@@ -93,14 +93,14 @@ function registrations(state = defaultRegistrationsState, action) {
             return Map({
                 registrations: action.registrations
                     .map(r => r.update('createdAt', c => new Date(c)))
-                    .sort(r => r.get('createdAt')),
+                    .sort((r1, r2) => r1.get('createdAt') < r2.get('createdAt')),
                 receivedAt: action.receivedAt,
                 isFetching: false,
             });
         case FETCH_REGISTER_FINISH_SUCCESS: {
             const registration = action.registration.update('createdAt', c => new Date(c));
             return state.update('registrations',
-                registrations => registrations.push(registration).sort(r => r.get('createdAt'))
+                registrations => registrations.push(registration).sort((r1, r2) => r1.get('createdAt') < r2.get('createdAt'))
             );
         }
         case FETCH_REGISTRATIONS_FAILURE:

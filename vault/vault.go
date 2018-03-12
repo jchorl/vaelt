@@ -15,27 +15,25 @@ import (
 )
 
 const (
-	// LoginPasswordEntryTitle is the title used for entries that contain a user's password to log in
-	LoginPasswordEntryTitle = "Vaelt Login Password"
-	entryEntityType         = "entry"
+	entryEntityType = "entry"
 )
 
 // An Entry is just information stored in the vault
 type Entry struct {
-	Title            string    `json:"title"`
-	EncryptedMessage []byte    `json:"encryptedMessage"`
-	Version          int       `json:"version"`
-	Domain           string    `json:"domain,omitempty"`
-	Created          time.Time `json:"created"`
+	Title            string         `json:"title"`
+	EncryptedMessage string         `json:"encryptedMessage"`
+	Version          int            `json:"version"`
+	Key              *datastore.Key `json:"key" datastore:"-"`
+	Created          time.Time      `json:"created"`
 }
 
 // PostHandler posts to vault
 func PostHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
-	entry := new(Entry)
-	if err := c.Bind(entry); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+	entries := []Entry{}
+	if err := c.Bind(&entries); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Unable to unmarshal the request body")
 	}
 
 	userKey, ok := sessions.GetUserKeyFromContext(c)
@@ -43,67 +41,24 @@ func PostHandler(c echo.Context) error {
 		return errors.New("Could not get user key from context")
 	}
 
-	_, err := Put(ctx, entry, userKey)
+	_, err := put(ctx, entries, userKey)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, entry)
+	return c.JSON(http.StatusCreated, entries)
 }
 
-// GetHandler retrieves entities from the vault, either based on an id or title query param
-func GetHandler(c echo.Context) error {
-	ctx := appengine.NewContext(c.Request())
-
-	userKey, ok := sessions.GetUserKeyFromContext(c)
-	if !ok {
-		return errors.New("Could not get user key from context")
-	}
-
-	vaultKeyEncoded := c.Param("id")
-	var entries []Entry
-	if vaultKeyEncoded != "" {
-		vaultKey, err := datastore.DecodeKey(vaultKeyEncoded)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err)
-		}
-
-		entry, err := Get(ctx, vaultKey, userKey)
-		if err != nil {
-			return err
-		}
-
-		if entry != nil {
-			entries = []Entry{*entry}
-		}
-	} else {
-		title := c.Param("title")
-		if title == "" {
-			return c.NoContent(http.StatusBadRequest)
-		}
-		var err error
-		entries, err = getByTitle(ctx, title, userKey)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(entries) == 0 {
-		return echo.NewHTTPError(http.StatusNotFound)
-	}
-
-	return c.JSON(http.StatusOK, entries)
-}
-
-// GetAllHandler retrieves all of a user's entities from the vault
+// GetAllHandler gets all items from vault
 func GetAllHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
+
 	userKey, ok := sessions.GetUserKeyFromContext(c)
 	if !ok {
 		return errors.New("Could not get user key from context")
 	}
 
-	entries, err := GetAll(ctx, userKey)
+	entries, err := getAll(ctx, userKey)
 	if err != nil {
 		return err
 	}
@@ -111,64 +66,80 @@ func GetAllHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, entries)
 }
 
-// Put puts an entry into the vault
-func Put(ctx context.Context, entry *Entry, user *datastore.Key) (*datastore.Key, error) {
-	// first get existing entries to bump the version
-	existing, err := getByTitle(ctx, entry.Title, user)
+func put(ctx context.Context, entries []Entry, userKey *datastore.Key) ([]*datastore.Key, error) {
+	// make sure the titles are all the same
+	if len(entries) == 0 {
+		return nil, errors.New("Cant put no entries")
+	}
+	title := entries[0].Title
+	for _, entry := range entries {
+		if entry.Title != title {
+			return nil, errors.New("All entries must have the same title")
+		}
+	}
+
+	// get existing entries to bump the version
+	existing, err := getByTitle(ctx, title, userKey)
 	if err != nil {
 		return nil, err
 	}
 
-	nextVersion := len(existing) + 1
-	entry.Version = nextVersion
+	nextVersion := 1
+	for _, entry := range existing {
+		if entry.Version >= nextVersion {
+			nextVersion = entry.Version + 1
+		}
+	}
+	keys := []*datastore.Key{}
+	for idx := range entries {
+		if !entries[idx].Key.Parent().Equal(userKey) {
+			return nil, errors.New("Key must be the id of a key owned by you")
+		}
 
-	k := datastore.NewIncompleteKey(ctx, entryEntityType, user)
-	entry.Created = time.Now()
-	k, err = datastore.Put(ctx, k, entry)
+		entries[idx].Version = nextVersion
+		entries[idx].Created = time.Now()
+		keys = append(keys, datastore.NewIncompleteKey(ctx, entryEntityType, entries[idx].Key))
+	}
+
+	keys, err = datastore.PutMulti(ctx, keys, entries)
 	if err != nil {
 		log.Errorf(ctx, "Error putting to vault: %+v", err)
 		return nil, err
 	}
 
-	return k, nil
+	return keys, nil
 }
 
-// Get gets an entry from the vault
-func Get(ctx context.Context, key *datastore.Key, userKey *datastore.Key) (*Entry, error) {
-	if !key.Parent().Equal(userKey) {
-		return nil, nil
-	}
-	entry := new(Entry)
-	if err := datastore.Get(ctx, key, entry); err != nil {
-		log.Errorf(ctx, "Error getting from vault: %+v", err)
-		return nil, err
-	}
-	return entry, nil
-}
-
-// GetAll gets all entries for a user
-func GetAll(ctx context.Context, userKey *datastore.Key) ([]Entry, error) {
-	var entries []Entry
+func getByTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Entry, error) {
+	entries := []Entry{}
 	query := datastore.NewQuery(entryEntityType).
+		Filter("Title =", title).
 		Ancestor(userKey)
-	_, err := query.GetAll(ctx, &entries)
+	keys, err := query.GetAll(ctx, &entries)
 	if err != nil {
-		log.Errorf(ctx, "Failed to query for all entries: %+v", err)
+		log.Errorf(ctx, "Unable to get by title: %+v", err)
 		return nil, err
+	}
+
+	for idx := range entries {
+		entries[idx].Key = keys[idx].Parent()
 	}
 
 	return entries, nil
 }
 
-func getByTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Entry, error) {
-	var entries []Entry
+func getAll(ctx context.Context, userKey *datastore.Key) ([]Entry, error) {
+	entries := []Entry{}
 	query := datastore.NewQuery(entryEntityType).
-		Filter("Title =", title).
 		Ancestor(userKey)
-	_, err := query.GetAll(ctx, &entries)
+	keys, err := query.GetAll(ctx, &entries)
 	if err != nil {
-		log.Errorf(ctx, "Failed to get entries: %+v", err)
+		log.Errorf(ctx, "Unable to get all: %+v", err)
 		return nil, err
+	}
+
+	for idx := range entries {
+		entries[idx].Key = keys[idx].Parent()
 	}
 
 	return entries, nil

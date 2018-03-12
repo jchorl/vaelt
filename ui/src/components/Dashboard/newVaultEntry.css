@@ -1,0 +1,25 @@
+.newVaultEntry {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.newVaultEntry .whiteContainer {
+  margin: 40px;
+  min-width: 500px;
+}
+
+.newVaultEntry .addToVaultText {
+  padding-bottom: 10px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid var(--purple);
+}
+
+.newVaultEntry .errorText {
+  margin: 10px 0;
+}
+
+.newVaultEntry button {
+  margin: 0;
+}

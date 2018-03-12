@@ -15,7 +15,6 @@ import (
 	"auth/scopes"
 	"auth/sessions"
 	"keystore"
-	"vault"
 )
 
 const (
@@ -29,10 +28,10 @@ var (
 
 // User represents a registered user
 type User struct {
-	Email       string         `json:"email"`
-	Password    *datastore.Key `json:"-"`
-	U2fEnforced bool           `json:"u2fEnforced"`
-	Verified    bool           `json:"verified"`
+	Email        string `json:"email"`
+	PasswordHash []byte `json:"passwordHash"`
+	U2fEnforced  bool   `json:"u2fEnforced"`
+	Verified     bool   `json:"verified"`
 }
 
 // RegisterHandler registers a new user
@@ -72,20 +71,10 @@ func RegisterHandler(c echo.Context) error {
 		return err
 	}
 
-	// save the password in vault
-	entry := &vault.Entry{
-		Title:            vault.LoginPasswordEntryTitle,
-		EncryptedMessage: hashedPassword,
-	}
-	passwordKey, err := vault.Put(ctx, entry, userKey)
-	if err != nil {
-		return err
-	}
-
 	// set the password and save the user
 	user := &User{
-		Email:    email,
-		Password: passwordKey,
+		Email:        email,
+		PasswordHash: hashedPassword,
 	}
 	userKey, err = Save(ctx, user)
 	if err != nil {
@@ -94,7 +83,7 @@ func RegisterHandler(c echo.Context) error {
 
 	// save the keypair
 	for _, key := range keyPair {
-		_, err = keystore.Put(ctx, &key, userKey)
+		err = keystore.Put(ctx, &key, userKey)
 		if err != nil {
 			return err
 		}
@@ -142,17 +131,12 @@ func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 		return nil, ErrorBadRequest
 	}
 
-	key, u, err := GetUserByEmail(ctx, email)
+	key, user, err := GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 
-	passwordEntry, err := vault.Get(ctx, u.Password, key)
-	if err != nil {
-		return nil, err
-	}
-
-	err = bcrypt.CompareHashAndPassword(passwordEntry.EncryptedMessage, []byte(password))
+	err = bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password))
 	if err != nil {
 		return nil, nil
 	}

@@ -1,0 +1,18 @@
+.keys .keyName {
+  width: 40%;
+}
+
+.keys .keyCreatedAt, .keys .keyRevoke {
+  width: 30%;
+}
+
+.keys .errorText {
+  margin-top: 15px;
+}
+
+.keys .nameForm {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
