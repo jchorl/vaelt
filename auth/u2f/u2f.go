@@ -344,7 +344,7 @@ func fetchRegistrations(ctx context.Context, userKey *datastore.Key) ([]Registra
 	}
 
 	// use idx because regs are modified in the loop
-	for idx, _ := range registrations {
+	for idx := range registrations {
 		err = (&registrations[idx]).populateU2fInRegistration()
 		if err != nil {
 			log.Errorf(ctx, "Failed to parse registration from db: %+v", err)

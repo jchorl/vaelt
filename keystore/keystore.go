@@ -149,7 +149,7 @@ func GetAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
 	}
 
 	// use idx to modify the keys instead of copies
-	for idx, _ := range keys {
+	for idx := range keys {
 		keys[idx].ID = ks[idx]
 	}
 
