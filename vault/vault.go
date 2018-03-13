@@ -144,3 +144,23 @@ func getAll(ctx context.Context, userKey *datastore.Key) ([]Entry, error) {
 
 	return entries, nil
 }
+
+// DeleteByKey deletes all entries encrypted by a specific key
+func DeleteByKey(ctx context.Context, key *datastore.Key) error {
+	query := datastore.NewQuery(entryEntityType).
+		KeysOnly().
+		Ancestor(key)
+	keys, err := query.GetAll(ctx, nil)
+	if err != nil {
+		log.Errorf(ctx, "Unable to get all vault entries by key: %+v", err)
+		return err
+	}
+
+	err = datastore.DeleteMulti(ctx, keys)
+	if err != nil {
+		log.Errorf(ctx, "Unable to delete all vault entries by key: %+v", err)
+		return err
+	}
+
+	return nil
+}

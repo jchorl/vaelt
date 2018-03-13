@@ -29,4 +29,5 @@
   align-items: center;
   margin: 5px 10px;
   color: var(--dark-grey);
+  min-height: 40px;
 }

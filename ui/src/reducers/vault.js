@@ -6,6 +6,7 @@ import {
     ADD_TO_VAULT_SUCCESS,
     ADD_TO_VAULT_FAILURE,
 } from '../actions/vault';
+import { REVOKE_KEY_SUCCESS } from '../actions/keys';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
 const defaultState = Map({
@@ -26,6 +27,15 @@ export default function vault(state = defaultState, action) {
                 receivedAt: action.receivedAt,
                 isFetching: false,
             });
+        case REVOKE_KEY_SUCCESS:
+            return state.update(
+                'entries',
+                entries => entries
+                .valueSeq()
+                .flatten(true)
+                .filter(e => e.get('key') !== action.id)
+                .groupBy(e => e.get('title'))
+            );
         case FETCH_VAULT_ALL_FAILURE:
             return defaultState.set('error', action.error);
         case ADD_TO_VAULT_FAILURE:

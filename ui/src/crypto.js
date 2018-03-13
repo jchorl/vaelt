@@ -13,10 +13,18 @@ export async function generateKeyPair(email, passphrase) {
 
 export async function fetchKey(keyUrl) {
     // keyUrl won't get the raw cert
-    let rawKeyUrl = new URL(keyUrl);
-    rawKeyUrl.searchParams.set('options', 'mr');
-    return fetch(rawKeyUrl)
-        .then(resp => resp.text());
+    let rawKeyURL = new URL(keyUrl);
+    rawKeyURL.searchParams.set('options', 'mr');
+    // http reqs must be proxied due to mixed content requirements on chrome. e.g.
+    // sks-keyservers uses their own custom signed cert.
+    // fetch wont fetch over http (mixed content) and wont allow you to pin a cert
+    // so just proxy through vaelt.
+    if (rawKeyURL.protocol === 'http:' || rawKeyURL.hostname === 'hkps.pool.sks-keyservers.net') {
+        let proxyURL = new URL('/api/keys/proxy', window.location);
+        proxyURL.searchParams.set('url', rawKeyURL.toString());
+        return fetch(proxyURL).then(resp => resp.text());
+    }
+    return fetch(rawKeyURL).then(resp => resp.text());
 }
 
 export async function encrypt(secret, pubKey) {

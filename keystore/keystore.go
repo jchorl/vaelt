@@ -11,8 +11,10 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/urlfetch"
 
 	"auth/sessions"
+	"vault"
 )
 
 const (
@@ -101,8 +103,10 @@ func RevokeHandler(c echo.Context) error {
 		return echo.ErrNotFound
 	}
 
-	// TODO figure out circular dependencies between vault and keystore
-	// delete all vault entries encrypted by this key
+	err = vault.DeleteByKey(ctx, key)
+	if err != nil {
+		return err
+	}
 
 	err = datastore.Delete(ctx, key)
 	if err != nil {
@@ -111,6 +115,25 @@ func RevokeHandler(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, c.Param("id"))
+}
+
+// ProxyHandler proxies requests for certs.
+// sks-keyservers can either serve over http, or use
+// tls certs from an untrusted CA so chrome wont load it.
+// Furthermore, urlfetch doesn't let you specify your own
+// custom CA certs so we can't even verify sks-keyserver
+// requests against their root CA :(
+// See https://github.com/GoogleCloudPlatform/python-compat-runtime/pull/124
+func ProxyHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+	client := urlfetch.Client(ctx)
+	resp, err := client.Get(c.QueryParam("url"))
+	if err != nil {
+		log.Errorf(ctx, "Unable to proxy key req: %+v", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return c.Stream(http.StatusOK, "text/plain", resp.Body)
 }
 
 // Put saves a key
