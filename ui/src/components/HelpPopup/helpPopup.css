@@ -1,0 +1,34 @@
+.helpPopup {
+  cursor: pointer;
+  position: relative;
+}
+
+.helpPopup .message {
+  display: none;
+  position: absolute;
+  width: 180px;
+  bottom: 200%;
+  left: -84px;
+  background: var(--light-blue);
+  color: var(--dark-blue);
+  font-size: 0.9em;
+  font-family: 'Cabin', sans-serif;
+  padding: 10px;
+  box-sizing: border-box;
+  border-radius: 4px;
+}
+
+.helpPopup .message:after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--light-blue) transparent transparent transparent;
+}
+
+.helpPopup:hover .message {
+  display: block;
+}
