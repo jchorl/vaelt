@@ -125,6 +125,14 @@ input[type="checkbox"]:checked + label.toggle:after {
   border-radius: 4px;
 }
 
+.greyContainer {
+  background-color: var(--light-grey);
+  border-left: 2px solid var(--purple);
+  box-sizing: border-box;
+  padding: 20px;
+  margin-top: 10px;
+}
+
 .errorText {
   color: var(--red);
 }

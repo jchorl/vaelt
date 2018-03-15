@@ -60,8 +60,9 @@ export default function vault(state = defaultState, action) {
         case FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS:
             return state.setIn(['titleToKeys', action.title], action.keys);
         case DECRYPTION_SUCCESS:
-            return state.set('yubikeyTapRequired', false);
+            return state.set('yubikeyTapRequired', false).delete('decryptionError');
         case DECRYPTION_FAILURE:
+            return state.set('decryptionError', action.error);
         case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
         case ADD_TO_VAULT_FAILURE:
             return state.set('error', action.error);

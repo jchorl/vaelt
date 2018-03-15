@@ -9,14 +9,6 @@
   box-sizing: border-box;
 }
 
-.account .greyBox {
-  background-color: var(--light-grey);
-  border-left: 2px solid var(--purple);
-  box-sizing: border-box;
-  padding: 20px;
-  margin-top: 10px;
-}
-
 .account .table {
   border-radius: 4px;
   background-color: white;

@@ -149,7 +149,7 @@ class Keys extends Component {
         return (
             <div className="keys">
                 <h2>Keys</h2>
-                <div className="greyBox">
+                <div className="greyContainer">
                     <div className="table">
                         {
                         allKeys.map(k => (

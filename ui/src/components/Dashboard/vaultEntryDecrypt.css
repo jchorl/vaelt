@@ -1,0 +1,40 @@
+.vaultEntryDecrypt .decryptButtons {
+  margin-top: 15px;
+}
+
+.vaultEntryDecrypt .secretForm {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vaultEntryDecrypt .tapRequired {
+  --timer-background: var(--light-grey);
+  --duration: 10s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.vaultEntryDecrypt .textAndTimer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vaultEntryDecrypt .decryptedContainer button {
+  padding: 5px;
+  font-size: 1.1em;
+}
+
+.vaultEntryDecrypt .decrypted {
+  display: flex;
+}
+
+.vaultEntryDecrypt #decryptedText {
+  background: white;
+}
+
+.vaultEntry .errorText {
+  margin-top: 20px;
+}

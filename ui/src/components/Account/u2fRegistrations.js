@@ -73,7 +73,7 @@ class U2fRegistrations extends Component {
                 {
                 u2fEnforced
                 ? (
-                <div className="greyBox">
+                <div className="greyContainer">
                     {
                     !registrations.get('registrations').isEmpty()
                     ? (
