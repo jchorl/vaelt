@@ -4,10 +4,17 @@ export function jsonResponse(dispatch, success, failure) {
     return function (resp) {
         if (resp.ok) {
             return resp.json().then(
-                json => dispatch(success(fromJS(json))),
+                json => {
+                    if (success) {
+                        return dispatch(success(fromJS(json)));
+                    }
+                    return fromJS(json);
+                },
                 error => {
                     const m = Map({ message: error.message });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 },
             );
@@ -18,11 +25,15 @@ export function jsonResponse(dispatch, success, failure) {
                 try {
                     const parsed = JSON.parse(text);
                     const m = Map(parsed);
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 } catch (e) {
                     const m = Map({ message: text });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 }
             },
@@ -34,10 +45,17 @@ export function stringResponse(dispatch, success, failure) {
     return function (resp) {
         if (resp.ok) {
             return resp.text().then(
-                text => dispatch(success(text)),
+                text => {
+                    if (success) {
+                        return dispatch(success(text));
+                    }
+                    return text;
+                },
                 error => {
                     const m = Map({ message: error.message });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 },
             );
@@ -48,11 +66,15 @@ export function stringResponse(dispatch, success, failure) {
                 try {
                     const parsed = JSON.parse(text);
                     const m = Map(parsed);
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 } catch (e) {
                     const m = Map({ message: text });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 }
             },
@@ -64,10 +86,16 @@ export function noContentResponse(dispatch, success, failure) {
     return function (resp) {
         if (resp.ok) {
             return resp.text().then(
-                () => dispatch(success()),
+                () => {
+                    if (success) {
+                        return dispatch(success());
+                    }
+                },
                 error => {
                     let m = Map({ message: error.message });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 },
             );
@@ -78,11 +106,15 @@ export function noContentResponse(dispatch, success, failure) {
                 try {
                     const parsed = JSON.parse(text);
                     const m = Map(parsed);
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 } catch (e) {
                     const m = Map({ message: text });
-                    dispatch(failure(m));
+                    if (failure) {
+                        dispatch(failure(m));
+                    }
                     return Promise.reject(m);
                 }
             },

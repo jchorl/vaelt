@@ -5,7 +5,8 @@
 
 .account .accountContainer {
   margin: 40px;
-  min-width: 500px;
+  min-width: 688px;
+  box-sizing: border-box;
 }
 
 .account .greyBox {

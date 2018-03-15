@@ -28,3 +28,7 @@
   background-color: var(--dark-blue);
   color: white;
 }
+
+.dashboard h2 {
+  margin-top: 0;
+}

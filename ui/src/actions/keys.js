@@ -128,3 +128,69 @@ export function revokeKey(id) {
             );
     };
 }
+
+export const FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST = 'FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST';
+function requestKeysForVaultEntry() {
+    return {
+        type: FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST,
+    }
+}
+
+export const FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE = 'FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE';
+function receiveKeysForVaultEntryFailure(error) {
+    return {
+        type: FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
+        error,
+    }
+}
+
+export function fetchKeysForVaultEntry(title) {
+    return function(dispatch) {
+        dispatch(requestKeysForVaultEntry());
+
+        let keysURL = new URL('/api/keys', window.location);
+        keysURL.searchParams.set('vaultTitle', title);
+        let headers = new Headers();
+        headers.append('Accept', 'application/json');
+        return fetch(keysURL, {
+            credentials: 'same-origin',
+            method: 'GET',
+            headers,
+        })
+            .then(
+                jsonResponse(dispatch, undefined, receiveKeysForVaultEntryFailure)
+            );
+    };
+}
+
+export const FETCH_KEY_BY_ID_REQUEST = 'FETCH_KEY_BY_ID_REQUEST';
+function requestKeyByID() {
+    return {
+        type: FETCH_KEY_BY_ID_REQUEST,
+    }
+}
+
+export const FETCH_KEY_BY_ID_FAILURE = 'FETCH_KEY_BY_ID_FAILURE';
+function receiveKeyByIDFailure(error) {
+    return {
+        type: FETCH_KEY_BY_ID_FAILURE,
+        error,
+    }
+}
+
+export function fetchKeyByID(id) {
+    return function(dispatch) {
+        dispatch(requestKeyByID());
+
+        let headers = new Headers();
+        headers.append('Accept', 'application/json');
+        return fetch(`/api/keys/${id}`, {
+            credentials: 'same-origin',
+            method: 'GET',
+            headers,
+        })
+            .then(
+                jsonResponse(dispatch, undefined, receiveKeyByIDFailure)
+            );
+    };
+}

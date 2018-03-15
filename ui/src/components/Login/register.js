@@ -57,12 +57,14 @@ class Register extends Component {
         const key = await generateKeyPair(email, password);
         const keys = [{
             armoredKey: key.privateKeyArmored,
-            type: "private",
-            name: "Password",
+            type: 'private',
+            name: 'Password',
+            device: 'password',
         }, {
             armoredKey: key.publicKeyArmored,
-            type: "public",
-            name: "Password",
+            type: 'public',
+            name: 'Password',
+            device: 'password',
         }];
 
         registerUser(email, password, keys);

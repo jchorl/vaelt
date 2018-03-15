@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo"
+	"golang.org/x/crypto/openpgp/armor"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
@@ -31,11 +33,14 @@ type Key struct {
 	Name       string         `json:"name"`
 	URL        string         `json:"url"`
 	ArmoredKey string         `datastore:",noindex" json:"armoredKey"`
-	Type       string         `json:"type"`
+	Type       string         `json:"type"`   // either public or private
+	Device     string         `json:"device"` // either yubikey, password, or unknown
 	CreatedAt  time.Time      `json:"createdAt"`
 }
 
 // GetAllHandler gets all of a users keys
+// An optional query param vaultTitle can be passed to
+// get all the keys that encrypt those vault entries
 func GetAllHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 	userKey, ok := sessions.GetUserKeyFromContext(c)
@@ -43,12 +48,46 @@ func GetAllHandler(c echo.Context) error {
 		return errors.New("Could not get user key from context")
 	}
 
-	keys, err := GetAll(ctx, userKey)
-	if err != nil {
-		return err
+	var keys []Key
+	var err error
+	vaultTitle := c.QueryParam("vaultTitle")
+	if vaultTitle == "" {
+		// create err to not overwrite keys
+		keys, err = getAll(ctx, userKey)
+		if err != nil {
+			return err
+		}
+	} else {
+		keys, err = getAllForVaultTitle(ctx, vaultTitle, userKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	return c.JSON(http.StatusOK, keys)
+}
+
+// GetHandler gets a key by id
+func GetHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	keyKey, err := datastore.DecodeKey(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Unable to parse id key")
+	}
+
+	if !keyKey.Parent().Equal(userKey) {
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	key := new(Key)
+	datastore.Get(ctx, keyKey, key)
+
+	return c.JSON(http.StatusOK, key)
 }
 
 // PostHandler posts a new key
@@ -65,13 +104,26 @@ func PostHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Could not parse the request body")
 	}
 
+	// make sure only one of url, armoredKey is filled
+	if (key.ArmoredKey != "" && key.URL != "") || (key.ArmoredKey == "" && key.URL == "") {
+		return echo.NewHTTPError(http.StatusBadRequest, "Only one of armoredKey and url should be provided")
+	}
+
+	// make sure the armored key is valid
+	if key.ArmoredKey != "" {
+		_, err := armor.Decode(strings.NewReader(key.ArmoredKey))
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "The provided armored key is not valid")
+		}
+	}
+
 	// make sure the entry is not a duplicate
-	allKeys, err := GetAll(ctx, userKey)
+	allKeys, err := getAll(ctx, userKey)
 	if err != nil {
 		return err
 	}
 	for _, k := range allKeys {
-		if k.URL == key.URL || k.ArmoredKey == key.ArmoredKey {
+		if (k.URL != "" && k.URL == key.URL) || (k.ArmoredKey != "" && k.ArmoredKey == key.ArmoredKey) {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Key is identical to existing key (%s)", k.Name))
 		}
 	}
@@ -160,8 +212,7 @@ func Put(ctx context.Context, key *Key, userKey *datastore.Key) error {
 	return nil
 }
 
-// GetAll gets all keys for a user
-func GetAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
+func getAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
 	var keys []Key
 	query := datastore.NewQuery(keyEntityType).
 		Ancestor(userKey)
@@ -174,6 +225,35 @@ func GetAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
 	// use idx to modify the keys instead of copies
 	for idx := range keys {
 		keys[idx].ID = ks[idx]
+	}
+
+	return keys, nil
+}
+
+func getAllForVaultTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Key, error) {
+	vaultEntries, err := vault.GetByTitle(ctx, title, userKey)
+	if err != nil {
+		return nil, err
+	}
+
+	parents := map[string]*datastore.Key{}
+	for _, vaultEntry := range vaultEntries {
+		keyEncoded := vaultEntry.Key.Encode()
+		if _, ok := parents[keyEncoded]; !ok {
+			parents[keyEncoded] = vaultEntry.Key
+		}
+	}
+
+	keyKeys := []*datastore.Key{}
+	for _, key := range parents {
+		keyKeys = append(keyKeys, key)
+	}
+
+	keys := make([]Key, len(keyKeys))
+	err = datastore.GetMulti(ctx, keyKeys, keys)
+	if err != nil {
+		log.Errorf(ctx, "Failed to query for keys by vault title: %+v", err)
+		return nil, err
 	}
 
 	return keys, nil

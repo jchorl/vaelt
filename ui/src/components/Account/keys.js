@@ -2,17 +2,25 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
-import { addKey, fetchKeysIfNeeded, revokeKey } from '../../actions/keys';
+import {
+    addKey,
+    fetchKeysIfNeeded,
+    fetchKeyByID,
+    revokeKey
+} from '../../actions/keys';
 import { getPublicKey } from '../../yubikey';
 import './keys.css';
 
-const NONE = Symbol("NONE");
-const ADD_FROM_YUBIKEY = Symbol("ADD_FROM_YUBIKEY");
+const NONE = Symbol('NONE');
+const ADD_FROM_YUBIKEY = Symbol('ADD_FROM_YUBIKEY');
+const ADD_FROM_URL = Symbol('ADD_FROM_URL');
+const ADD_FROM_KEY = Symbol('ADD_FROM_KEY');
 
 class Keys extends Component {
     static propTypes = {
         addKey: PropTypes.func.isRequired,
         fetchKeysIfNeeded: PropTypes.func.isRequired,
+        fetchKeyByID: PropTypes.func.isRequired,
         revokeKey: PropTypes.func.isRequired,
         keys: ImmutablePropTypes.contains({
             keys: ImmutablePropTypes.listOf(
@@ -32,6 +40,8 @@ class Keys extends Component {
         this.state = {
             state: NONE,
             name: '',
+            url: '',
+            armoredKey: '',
         };
     }
 
@@ -43,7 +53,9 @@ class Keys extends Component {
         // add key success
         if (nextProps.keys.get('keys').size > this.props.keys.get('keys').size) {
             this.transitionTo(NONE)();
-            this.setState({ name: '' });
+
+            // reset name, url and armoredKey
+            this.setState({ name: '', url: '', armoredKey: '' });
         }
     }
 
@@ -54,6 +66,29 @@ class Keys extends Component {
             name,
             url,
             type: 'public',
+            device: 'yubikey',
+        };
+        this.props.addKey(key);
+    }
+
+    addFromURL = () => {
+        const { name, url } = this.state;
+        const key = {
+            name,
+            url,
+            type: 'public',
+            device: 'unknown',
+        };
+        this.props.addKey(key);
+    }
+
+    addFromArmoredKey = () => {
+        const { name, armoredKey } = this.state;
+        const key = {
+            name,
+            armoredKey,
+            type: 'public',
+            device: 'unknown',
         };
         this.props.addKey(key);
     }
@@ -64,6 +99,27 @@ class Keys extends Component {
 
     revoke = id => () => {
         this.props.revokeKey(id);
+    }
+
+    show = id => async () => {
+        let key = this.props.keys.get('keys').find(v => v.get('id') === id);
+        // if the key is a url, just open that url
+        if (!!key.get('url')) {
+            window.open(key.get('url'));
+            return;
+        } else if (!key.get('armoredKey')) {
+            // private keys arent saved in redux
+            key = await this.props.fetchKeyByID(key.get('id'));
+        }
+        // some hack to write the key in a new window/tab
+        const x = window.open();
+        if (!x) {
+            alert('You might have popups blocked');
+            return;
+        }
+        x.document.open();
+        x.document.write('<pre>' + key.get('armoredKey') + '</pre>');
+        x.document.close();
     }
 
     handleInputChange = event => {
@@ -77,20 +133,28 @@ class Keys extends Component {
     }
 
     render() {
-        const { state, name } = this.state;
+        const { state, name, url, armoredKey } = this.state;
         const { keys } = this.props;
-        const publicKeys = keys.get('keys').filter(k => k.get('type') === 'public');
+        const allKeys = keys.get('keys');
+
+        // TODO fix view when all keys are revoked
         return (
             <div className="keys">
                 <h2>Keys</h2>
                 <div className="greyBox">
                     <div className="table">
                         {
-                        publicKeys.map(k => (
+                        allKeys.map(k => (
                         <div key={ k.get('id') } className="tableEntry">
-                            <div className="keyName">{ k.get('name') }</div>
+                            <div className="keyName">
+                                { k.get('name') }
+                                { k.get('type') === 'private' ? <span className="privateText"> (private)</span> : null }
+                            </div>
                             <div className="keyCreatedAt">{ k.get('createdAt').toLocaleDateString() }</div>
-                            <button className="danger keyRevoke" onClick={ this.revoke(k.get('id')) } >Revoke</button>
+                            <div className="keyButtons">
+                                <button className="nobackground" onClick={ this.show(k.get('id')) } >Show</button>
+                                <button className="danger" onClick={ this.revoke(k.get('id')) } >{ k.get('type') === 'public' ? 'Revoke' : 'Delete' }</button>
+                            </div>
                         </div>
                         ))
                         }
@@ -100,7 +164,8 @@ class Keys extends Component {
                     ? (
                     <div>
                         <button className="purple" onClick={ this.transitionTo(ADD_FROM_YUBIKEY) }>Add From Yubikey</button>
-                        <button className="purple" onClick={ this.addFromYubikey }>Add From URL</button>
+                        <button className="purple" onClick={ this.transitionTo(ADD_FROM_URL) }>Add From URL</button>
+                        <button className="purple" onClick={ this.transitionTo(ADD_FROM_KEY) }>Add From Armored Key</button>
                     </div>
                     )
                     : state === ADD_FROM_YUBIKEY
@@ -112,6 +177,38 @@ class Keys extends Component {
                             <div>
                                 <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
                                 <button className="purple" onClick={ this.addFromYubikey }>Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    )
+                    : state === ADD_FROM_URL
+                    ? (
+                    <div>
+                        Add from URL
+                        <div className="nameUrlForm">
+                            <div className="urlForm">
+                                <input type="text" name="name" placeholder="Name" onChange={ this.handleInputChange } value={ name }/>
+                                <input type="text" name="url" placeholder="URL" onChange={ this.handleInputChange } value={ url }/>
+                            </div>
+                            <div className="urlFormButtons">
+                                <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                                <button className="purple" onClick={ this.addFromURL }>Add</button>
+                            </div>
+                        </div>
+                    </div>
+                    )
+                    : state === ADD_FROM_KEY
+                    ? (
+                    <div>
+                        Add from Armored Key
+                        <div className="nameKeyForm">
+                            <div className="keyForm">
+                                <input type="text" name="name" placeholder="Name" onChange={ this.handleInputChange } value={ name }/>
+                                <textarea name="armoredKey" placeholder="Armored Key..." onChange={ this.handleInputChange } value={ armoredKey }/>
+                            </div>
+                            <div className="keyFormButtons">
+                                <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                                <button className="purple" onClick={ this.addFromArmoredKey }>Add</button>
                             </div>
                         </div>
                     </div>
@@ -134,6 +231,7 @@ export default connect(
     state => ({ keys: state.keys }),
     dispatch => ({
         fetchKeysIfNeeded: () => dispatch(fetchKeysIfNeeded()),
+        fetchKeyByID: id => dispatch(fetchKeyByID(id)),
         addKey: key => dispatch(addKey(key)),
         revokeKey: id => dispatch(revokeKey(id)),
     }),

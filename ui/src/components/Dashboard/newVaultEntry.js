@@ -48,9 +48,7 @@ class NewVaultEntry extends Component {
         return (
             <div className="newVaultEntry">
                 <form className="whiteContainer">
-                    <div className="addToVaultText">
-                        Add to vault
-                    </div>
+                    <h2>Add to Vault</h2>
                     <input name="title" type="text" placeholder="Title" onChange={ this.handleInputChange } value={ title } />
                     <textarea name="secret" placeholder="Secret Contents..." onChange={ this.handleInputChange } value={ secret } />
                     {

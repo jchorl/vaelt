@@ -10,12 +10,6 @@
   min-width: 500px;
 }
 
-.newVaultEntry .addToVaultText {
-  padding-bottom: 10px;
-  margin-bottom: 25px;
-  border-bottom: 2px solid var(--purple);
-}
-
 .newVaultEntry .errorText {
   margin: 10px 0;
 }

@@ -1,18 +1,25 @@
-.keys .keyName {
+.keys .keyName, .keys .keyButtons {
   width: 40%;
 }
 
-.keys .keyCreatedAt, .keys .keyRevoke {
-  width: 30%;
+.keys .privateText {
+  color: var(--red);
 }
 
-.keys .keyRevoke {
+.keys .keyCreatedAt {
+  width: 20%;
+}
+
+.keys .keyButtons {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
-.keys .keyRevoke button {
+.keys .keyButtons button {
   margin: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  min-width: 73px;
 }
 
 .keys .errorText {
@@ -23,4 +30,19 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.keys .nameUrlForm, .keys .nameKeyForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys .urlForm, .keys .keyForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys .urlFormButtons, .keys .keyFormButtons {
+  display: flex;
+  justify-content: flex-end;
 }

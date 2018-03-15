@@ -1,3 +1,11 @@
 .vaultEntry {
   flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.vaultEntry .whiteContainer {
+  margin: 40px;
+  min-width: 500px;
 }

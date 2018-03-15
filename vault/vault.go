@@ -79,7 +79,7 @@ func put(ctx context.Context, entries []Entry, userKey *datastore.Key) ([]*datas
 	}
 
 	// get existing entries to bump the version
-	existing, err := getByTitle(ctx, title, userKey)
+	existing, err := GetByTitle(ctx, title, userKey)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,8 @@ func put(ctx context.Context, entries []Entry, userKey *datastore.Key) ([]*datas
 	return keys, nil
 }
 
-func getByTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Entry, error) {
+// GetByTitle gets all vault entries with a given title
+func GetByTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Entry, error) {
 	entries := []Entry{}
 	query := datastore.NewQuery(entryEntityType).
 		Filter("Title =", title).

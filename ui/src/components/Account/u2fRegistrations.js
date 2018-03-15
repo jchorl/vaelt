@@ -62,7 +62,7 @@ class U2fRegistrations extends Component {
 
         // TODO make the disable switch actually disable
         return (
-            <div>
+            <div className="u2fRegistrations">
                 <h2>Two-Factor Auth</h2>
                 <div className="u2fToggle">
                     <div className="u2fEnabledText">Enabled:</div>
