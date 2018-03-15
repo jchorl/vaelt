@@ -7,7 +7,6 @@ import {
     KEY_POST_FAILURE,
     REVOKE_KEY_SUCCESS,
     REVOKE_KEY_FAILURE,
-    FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
     FETCH_KEY_BY_ID_FAILURE,
 } from '../actions/keys';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
@@ -37,7 +36,6 @@ export default function keys(state = defaultState, action) {
                 .sort((k1, k2) => k1.get('createdAt') < k2.get('createdAt')),
                 receivedAt: action.receivedAt,
             });
-        case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
         case FETCH_KEY_BY_ID_FAILURE:
         case FETCH_KEYS_FAILURE:
             return defaultState.set('error', action.error);

@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { checkError } from './util';
 import { fetchSignChallenge, fetchSignFinish } from '../../actions/u2f';
-import Spinner from './spinner';
+import CircularTimer from '../CircularTimer';
 import './u2f.css';
 
 const NOT_STARTED = Symbol('NOT_STARTED');
@@ -74,7 +74,7 @@ class SignU2F extends Component {
         const { fetchSignChallenge } = this.props;
 
         return (
-            <div className="u2f">
+            <div className="u2f login">
                 {
                 state === NOT_STARTED
                 ? <button onClick={ fetchSignChallenge }>Fetching U2F...</button>
@@ -82,21 +82,21 @@ class SignU2F extends Component {
                 ? (
                 <div className="tapStage">
                     <div>Tap your U2F device</div>
-                    <Spinner />
+                    <CircularTimer />
                 </div>
                 )
                 : state === TAP_EXPIRED
                 ? (
                 <div className="horizontalCenter">
                     <div>Time has expired</div>
-                    <button className="retryButton" onClick={ fetchSignChallenge }>Try Again</button>
+                    <button className="retryButton nobackground" onClick={ fetchSignChallenge }>Try Again</button>
                 </div>
                 )
                 : state === FAILED
                 ? (
                 <div className="horizontalCenter">
                     <div>Something went wrong :(</div>
-                    <button className="retryButton" onClick={ fetchSignChallenge }>Try Again</button>
+                    <button className="retryButton nobackground" onClick={ fetchSignChallenge }>Try Again</button>
                 </div>
                 )
                 : state === SUCCEEDED

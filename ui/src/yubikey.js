@@ -1,4 +1,7 @@
+import { message } from 'openpgp';
+
 let sequence = 0;
+let decryptionDevice;
 
 export function getPublicKey() {
     let device;
@@ -31,7 +34,7 @@ export function getPublicKey() {
         .then(() => device.transferOut(0x02, Uint8Array.from([0x61, 0x07, 0x00, 0x00, 0x00, 0x00, sequence++, 0x01, 0x00, 0x00, 0x11, 0x10, 0x00, 0x15, 0x00, 0xFE, 0x00])))
         .then(() => device.transferIn(0x02, 100))
 
-        // send an abort for whatever reason
+        // send an abort in case the last operation is still going on
         .then(() => device.controlTransferOut({
             requestType: 'class',
             recipient: 'interface',
@@ -79,9 +82,220 @@ export function getPublicKey() {
             // and goes until the last two status bytes 90 00
             let urlBytes = new Uint8Array(resp.data.buffer, 10, resp.data.byteLength - 10 - 2);
             return Array.from(urlBytes).map(c => String.fromCharCode(c)).join('');
-        })
-        .catch(error => {
-            console.error(error)
-            return Promise.reject(error);
         });
+}
+
+// initDecryption sends the pin and payload
+export async function initDecryption(pin, armoredCiphertext) {
+    let ciphertext = message.readArmored(armoredCiphertext);
+
+    // the key id is in the ciphertext but does not get sent to the yubikey
+    let ciphertextPackets = ciphertext.packets[0].write().slice(11);
+    return navigator.usb.requestDevice({ filters: [{ vendorId: 0x1050 }] })
+        .then(selectedDevice => {
+            decryptionDevice = selectedDevice;
+            return decryptionDevice.open(); // Begin a session.
+        })
+        .then(() => decryptionDevice.selectConfiguration(1))
+        .then(() => decryptionDevice.claimInterface(2))
+
+        // send an abort in case the last operation is still going on
+        .then(() => decryptionDevice.controlTransferOut({
+            requestType: 'class',
+            recipient: 'interface',
+            request: 0x01, // abort
+            value: 0x0200, // seq 2, slot 0
+            index: 0x0002 // interface 2
+        }, Uint8Array.from([])))
+
+        // this is necessary for decoding
+        .then(() => {
+            let xfrBlock = [
+                // XfrBlock
+                0x6F,
+                // length - this won't work for VERY long pins (>240 chars or something)
+                pin.length + 5, 0x00, 0x00, 0x00,
+                // slot
+                0x00,
+                // sequence
+                sequence++,
+                // timeout
+                0x00,
+                // level
+                0x00, 0x00,
+                // apdu data
+                // class 00
+                0x00,
+                // VERIFY command
+                0x20,
+                // p1
+                0x00,
+                // p2 - specific reference data
+                0x82,
+                // length
+                pin.length,
+            ];
+            // push the pin chars on the back, but push their char codes
+            xfrBlock = xfrBlock.concat(pin.split('').map(c => c.charCodeAt(0)));
+            decryptionDevice.transferOut(0x02, Uint8Array.from(xfrBlock));
+        })
+        .then(() => decryptionDevice.transferIn(0x02, 65556))
+        .then(resp => {
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                throw new Error('Pin verification failed');
+            }
+        })
+        .then(() => {
+            let xfrBlock = [
+                // XfrBlock
+                0x6F,
+                // length - this won't work for VERY long pins (>240 chars or something)
+                pin.length + 5, 0x00, 0x00, 0x00,
+                // slot
+                0x00,
+                // seq
+                sequence++,
+                // timeout
+                0x00,
+                // level
+                0x00, 0x00,
+                // apdu data
+                // another verify
+                0x00, 0x20, 0x00,
+                // p2 = 10000001 which is again a specific reference
+                // this is a reference to the pin
+                0x81,
+                // length of pin
+                pin.length,
+            ];
+            // push the pin chars on the back, but push their char codes
+            xfrBlock = xfrBlock.concat(pin.split('').map(c => c.charCodeAt(0)));
+            decryptionDevice.transferOut(0x02, Uint8Array.from(xfrBlock));
+        })
+        .then(() => decryptionDevice.transferIn(0x02, 65556))
+        .then(resp => {
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                throw new Error('Pin verification failed');
+            }
+        })
+        // for now, just support 512 byte cryptograms so we don't have to loop and send variable number of messages
+        .then(() => {
+            let payload = [
+                // XfrBlock
+                0x6F,
+                // size 259
+                0x03, 0x01, 0x00, 0x00,
+                // slot 0
+                0x00,
+                // sequence
+                sequence++,
+                // timeout
+                0x00,
+                // level
+                0x00, 0x00,
+                // apdu data
+                // were using chaining - check gnupg-2.2.4/scd/apdu.c#2757 and https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.4
+                // this is not the last byte of the chain
+                0x10,
+                // this is a decipher https://github.com/Yubico/ykneo-openpgp/blob/1.0.11/applet/src/openpgpcard/OpenPGPApplet.java#L640
+                // also https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.1 and 7.2.9
+                0x2A, 0x80, 0x86,
+                // the length packet is always 0xfe for some reason
+                0xFE,
+            ];
+            // 1 byte padding for RSA
+            payload.push(0);
+
+            // first byte is length, send the rest of the ciphertext (but only 0xFE bytes)
+            payload = payload.concat(Array.from(ciphertextPackets.slice(1, 0xFE)));
+            decryptionDevice.transferOut(0x02, Uint8Array.from(payload));
+        })
+        .then(() => decryptionDevice.transferIn(0x02, 65556))
+        .then(resp => {
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                throw new Error('Unable to push cryptogram');
+            }
+        })
+        .then(() => {
+            let payload = [
+                // XfrBlock
+                0x6F,
+                // size 259
+                0x03, 0x01, 0x00, 0x00,
+                // slot 0
+                0x00,
+                // sequence
+                sequence++,
+                // timeout
+                0x00,
+                // level
+                0x00, 0x00,
+                // apdu data
+                // were using chaining - check gnupg-2.2.4/scd/apdu.c#2757 and https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.4
+                // this is not the last byte of the chain
+                0x10,
+                // this is a decipher https://github.com/Yubico/ykneo-openpgp/blob/1.0.11/applet/src/openpgpcard/OpenPGPApplet.java#L640
+                // also https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf section 7.1 and 7.2.9
+                0x2A, 0x80, 0x86,
+                // the length packet is always 0xfe for some reason
+                0xFE,
+            ];
+
+            payload = payload.concat(Array.from(ciphertextPackets.slice(0xFE, 2*0xFE)));
+            decryptionDevice.transferOut(0x02, Uint8Array.from(payload));
+        })
+        .then(() => decryptionDevice.transferIn(0x02, 65556))
+        .then(resp => {
+            // check for the 90 00 return
+            if (resp.data.getUint8(10) !== 0x90 || resp.data.getUint8(11) !== 0) {
+                throw new Error('Unable to push cryptogram');
+            }
+        })
+        .then(() => {
+            let payload = [
+                // XfrBlock
+                0x6F,
+                // size - 6 + remaining chars
+                ciphertextPackets.byteLength - 2*0xFE + 6, 0x00, 0x00, 0x00,
+                0x00,
+                // seq
+                sequence++,
+                0x00, 0x00, 0x00,
+                // apdu stuff
+                0x00,
+                0x2A, 0x80, 0x86,
+                // remaining packets
+                ciphertextPackets.byteLength - 2*0xFE,
+            ];
+            // this will break for longer cryptograms :(
+            // send the rest of the ciphertext
+            payload = payload.concat(Array.from(ciphertextPackets.slice(2*0xFE)));
+            // terminating 0
+            payload.push(0);
+            decryptionDevice.transferOut(0x02, Uint8Array.from(payload));
+        });
+}
+
+export async function finishDecryption() {
+    // start polling
+    for (let j = 0; j < 20; ++j) {
+        let resp = await decryptionDevice.transferIn(0x02, 65556);
+        if (resp.data.getUint8(resp.data.byteLength - 2) === 0x90 && resp.data.getUint8(resp.data.byteLength - 1) === 0) {
+            // the first byte should be 0x09, which signifies aes256 algo
+            if (resp.data.getUint8(10) !== 0x09) {
+                throw new Error('Unknown key algorithm detected');
+            }
+
+            // from index 11, to the end - 2 (0x90 0x00)
+            // the key also has some verification digits on the end (maybe this is mdc, idk. but its 2 bytes)
+            let key = new Uint8Array(resp.data.buffer, 11, resp.data.byteLength - 2 - 11 - 2);
+            return key;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    throw new Error('Failed to tap Yubikey');
 }

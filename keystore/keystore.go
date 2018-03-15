@@ -50,15 +50,27 @@ func GetAllHandler(c echo.Context) error {
 
 	var keys []Key
 	var err error
-	vaultTitle := c.QueryParam("vaultTitle")
-	if vaultTitle == "" {
+
+	keyKeys := []*datastore.Key{}
+	params := c.QueryParams()
+	for _, key := range params["key"] {
+		decoded, err := datastore.DecodeKey(key)
+		if err != nil {
+			log.Errorf(ctx, "Unable to decode key's key: %+v", err)
+			return echo.NewHTTPError(http.StatusBadRequest, "Unable to decode key's keys")
+		}
+
+		keyKeys = append(keyKeys, decoded)
+	}
+
+	if len(keyKeys) == 0 {
 		// create err to not overwrite keys
 		keys, err = getAll(ctx, userKey)
 		if err != nil {
 			return err
 		}
 	} else {
-		keys, err = getAllForVaultTitle(ctx, vaultTitle, userKey)
+		keys, err = getByKeys(ctx, keyKeys, userKey)
 		if err != nil {
 			return err
 		}
@@ -234,30 +246,22 @@ func getAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
 	return keys, nil
 }
 
-func getAllForVaultTitle(ctx context.Context, title string, userKey *datastore.Key) ([]Key, error) {
-	vaultEntries, err := vault.GetByTitle(ctx, title, userKey)
-	if err != nil {
-		return nil, err
-	}
-
-	parents := map[string]*datastore.Key{}
-	for _, vaultEntry := range vaultEntries {
-		keyEncoded := vaultEntry.Key.Encode()
-		if _, ok := parents[keyEncoded]; !ok {
-			parents[keyEncoded] = vaultEntry.Key
+func getByKeys(ctx context.Context, keyKeys []*datastore.Key, userKey *datastore.Key) ([]Key, error) {
+	for _, key := range keyKeys {
+		if !key.Parent().Equal(userKey) {
+			return nil, echo.ErrNotFound
 		}
 	}
 
-	keyKeys := []*datastore.Key{}
-	for _, key := range parents {
-		keyKeys = append(keyKeys, key)
+	keys := make([]Key, len(keyKeys))
+	err := datastore.GetMulti(ctx, keyKeys, keys)
+	if err != nil {
+		log.Errorf(ctx, "Failed to query for keys by keys: %+v", err)
+		return nil, err
 	}
 
-	keys := make([]Key, len(keyKeys))
-	err = datastore.GetMulti(ctx, keyKeys, keys)
-	if err != nil {
-		log.Errorf(ctx, "Failed to query for keys by vault title: %+v", err)
-		return nil, err
+	for idx := range keys {
+		keys[idx].ID = keyKeys[idx]
 	}
 
 	return keys, nil

@@ -139,6 +139,15 @@ function requestKeysForVaultEntry() {
     }
 }
 
+export const FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS = 'FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS';
+function receiveKeysForVaultEntrySuccess(title, keys) {
+    return {
+        type: FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS,
+        title,
+        keys,
+    }
+}
+
 export const FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE = 'FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE';
 function receiveKeysForVaultEntryFailure(error) {
     return {
@@ -147,12 +156,16 @@ function receiveKeysForVaultEntryFailure(error) {
     }
 }
 
-export function fetchKeysForVaultEntry(title) {
-    return function(dispatch) {
+export function fetchKeysForVaultEntryIfNeeded(title, keyKeys) {
+    return function(dispatch, getState) {
+        if (getState().vault.hasIn(['titleToKeys', title])) {
+            return Promise.resolve();
+        }
+
         dispatch(requestKeysForVaultEntry());
 
         let keysURL = new URL('/api/keys', window.location);
-        keysURL.searchParams.set('vaultTitle', title);
+        keyKeys.forEach(k => keysURL.searchParams.append('key', k));
         let headers = new Headers();
         headers.append('Accept', 'application/json');
         return fetch(keysURL, {
@@ -161,7 +174,11 @@ export function fetchKeysForVaultEntry(title) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, undefined, receiveKeysForVaultEntryFailure),
+                jsonResponse(
+                    dispatch,
+                    receiveKeysForVaultEntrySuccess.bind(undefined, title), // bind the title because its not included in the resp
+                    receiveKeysForVaultEntryFailure
+                ),
                 reqFailure(dispatch, receiveKeysForVaultEntryFailure)
             );
     };

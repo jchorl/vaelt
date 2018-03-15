@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
-import './spinner.css';
+import './circularTimer.css';
 
-export default class Spinner extends Component {
+export default class CircularTimer extends Component {
     render() {
         return (
-            <div className="spinner">
+            <div className="circularTimer">
                 <div className="spinning pie"></div>
                 <div className="fillBg"></div>
                 <div className="fill"></div>

@@ -5,10 +5,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  --duration: 30s;
 }
 
 .u2f.register {
   background: var(--light-grey);
+  --timer-background: var(--light-grey);
+}
+
+.u2f.login {
+  --timer-background: white;
 }
 
 .u2f .tapStage {

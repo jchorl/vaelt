@@ -1,4 +1,4 @@
-import openpgp, { key } from 'openpgp';
+import openpgp, { key, message } from 'openpgp';
 import { Map } from 'immutable';
 
 export async function generateKeyPair(email, passphrase) {
@@ -31,4 +31,14 @@ export async function encrypt(secret, keyID, armoredKey) {
         encryptedMessage,
         key: keyID,
     });
+}
+
+export async function decryptUsingSessionKey(ciphertext, key, algorithm) {
+    let msg = message.readArmored(ciphertext);
+    let sessionKey = {
+        data: key,
+        algorithm,
+    };
+    return msg.decrypt(null, null, [sessionKey])
+        .then(message => message.getText())
 }

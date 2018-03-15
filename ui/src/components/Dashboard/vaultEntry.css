@@ -9,3 +9,22 @@
   margin: 40px;
   min-width: 500px;
 }
+
+.vaultEntry .decryptButtons {
+  margin-top: 15px;
+}
+
+.vaultEntry .secretForm {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vaultEntry .tapRequired {
+  --timer-background: white;
+  --duration: 10s;
+}
+
+.vaultEntry .errorText {
+  margin-top: 20px;
+}

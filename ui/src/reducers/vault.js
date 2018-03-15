@@ -5,13 +5,22 @@ import {
     FETCH_VAULT_ALL_FAILURE,
     ADD_TO_VAULT_SUCCESS,
     ADD_TO_VAULT_FAILURE,
+    DECRYPTION_SUCCESS,
+    DECRYPTION_FAILURE,
+    YUBIKEY_TAP_REQUIRED,
 } from '../actions/vault';
-import { REVOKE_KEY_SUCCESS } from '../actions/keys';
+import {
+    REVOKE_KEY_SUCCESS,
+    FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS,
+    FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
+} from '../actions/keys';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
 const defaultState = Map({
     isFetching: false,
+    yubikeyTapRequired: false,
     entries: OrderedMap(),
+    titleToKeys: Map(),
 });
 export default function vault(state = defaultState, action) {
     switch (action.type) {
@@ -44,8 +53,16 @@ export default function vault(state = defaultState, action) {
                 .toList()
                 .groupBy(e => e.get('title'))
             );
+        case YUBIKEY_TAP_REQUIRED:
+            return state.set('yubikeyTapRequired', true);
         case FETCH_VAULT_ALL_FAILURE:
             return defaultState.set('error', action.error);
+        case FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS:
+            return state.setIn(['titleToKeys', action.title], action.keys);
+        case DECRYPTION_SUCCESS:
+            return state.set('yubikeyTapRequired', false);
+        case DECRYPTION_FAILURE:
+        case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
         case ADD_TO_VAULT_FAILURE:
             return state.set('error', action.error);
         case FETCH_LOGOUT_SUCCESS:

@@ -144,6 +144,8 @@ class Keys extends Component {
         const allKeys = keys.get('keys');
 
         // TODO fix view when all keys are revoked
+        // TODO encrypt all values with the new key if possible
+        // TODO warn when revoking a key
         return (
             <div className="keys">
                 <h2>Keys</h2>

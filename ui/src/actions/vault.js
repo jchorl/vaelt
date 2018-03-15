@@ -1,7 +1,8 @@
 import { Map } from 'immutable';
 import { jsonResponse, stringResponse, reqFailure } from './parseResponse';
 import { fetchKeysIfNeeded } from './keys';
-import { encrypt } from '../crypto';
+import { encrypt, decryptUsingSessionKey } from '../crypto';
+import { initDecryption, finishDecryption } from '../yubikey';
 
 export const FETCH_VAULT_ALL_REQUEST = 'FETCH_VAULT_ALL_REQUEST';
 function requestVaultAll() {
@@ -85,14 +86,17 @@ export function addToVault(title, secret) {
             return Promise.reject(m);
         }
 
+        // fetch all public keys
         try {
             await dispatch(fetchKeysIfNeeded());
         } catch (err) {
             dispatch(addToVaultFailure(err));
             return Promise.reject(err);
         }
-
         const publicKeys = getState().keys.get('keys').filter(k => k.get('type') === 'public');
+
+        // encrypt the secret with all public keys
+        // some keys might require fetching by URL
         let entries;
         try {
             entries = await Promise.all(
@@ -107,13 +111,17 @@ export function addToVault(title, secret) {
                 })
             );
         } catch (err) {
+            // give meaningful error when keys are invalid
             const name = publicKeys.find(k => k.get('id') === err.get('key')).get('name');
             const m = err.update('message', message => `Failed to encrypt using key "${name}". Consider checking that the key is valid. Error message: ${message}`);
             dispatch(addToVaultFailure(m));
             return Promise.reject(m);
         }
+
+        // set the titles
         entries = entries.map(entry => entry.set('title', title));
 
+        // post the new ciphertexts
         let headers = new Headers();
         headers.append('Accept', 'application/json');
         headers.append('Content-Type', 'application/json');
@@ -151,5 +159,64 @@ function fetchArmoredKeyByURL(keyID, url) {
             resp => resp,
             err => Promise.reject(err.set('key', keyID))
         );
+    }
+}
+
+export const DECRYPTION_SUCCESS = 'DECRYPTION_SUCCESS';
+function decryptionSuccess() {
+    // do not pass on decrypted value
+    return {
+        type: DECRYPTION_SUCCESS,
+    }
+}
+
+export const DECRYPTION_FAILURE = 'DECRYPTION_FAILURE';
+function decryptionFailure(error) {
+    return {
+        type: DECRYPTION_FAILURE,
+        error,
+    }
+}
+
+export const YUBIKEY_TAP_REQUIRED = 'YUBIKEY_TAP_REQUIRED';
+function yubikeyTapRequired() {
+    return {
+        type: YUBIKEY_TAP_REQUIRED,
+    }
+}
+
+export function decrypt(key, title, secret) {
+    return async function(dispatch, getState) {
+        // get the armored ciphertext
+        const ciphertext = getState()
+            .vault
+            .getIn(['entries', title])
+            .find(e => e.get('key') === key.get('id'))
+            .get('encryptedMessage');
+        switch (key.get('device')) {
+            case 'password':
+                // fetch the private key
+                break;
+            case 'yubikey':
+                try {
+                    await initDecryption(secret, ciphertext);
+
+                    // dispatch the tap required
+                    dispatch(yubikeyTapRequired());
+
+                    const decryptionKey = await finishDecryption();
+                    const decrypted = await decryptUsingSessionKey(ciphertext, decryptionKey, 'aes256');
+                    dispatch(decryptionSuccess());
+                    return decrypted;
+                } catch (e) {
+                    const m = Map({ message: e.message });
+                    dispatch(decryptionFailure(m));
+                    return Promise.reject(m);
+                }
+            default:
+                const m = Map({ message: 'Only decryption by Yubikey or password is supported' });
+                dispatch(decryptionFailure(m));
+                return Promise.reject(m);
+        }
     }
 }

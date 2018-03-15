@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { checkError } from './util';
 import { fetchRegisterChallenge, fetchRegisterFinish } from '../../actions/u2f';
-import Spinner from './spinner';
+import CircularTimer from '../CircularTimer';
 import './u2f.css';
 
 const NOT_STARTED = Symbol('NOT_STARTED');
@@ -81,28 +81,28 @@ class RegisterU2F extends Component {
                 ? (
                 <div className="tapStage">
                     <div>Tap your U2F device</div>
-                    <Spinner />
+                    <CircularTimer />
                 </div>
                 )
                 : state === TAP_EXPIRED
                 ? (
                 <div className="horizontalCenter">
                     <div>Time has expired</div>
-                    <button className="retryButton" onClick={ fetchRegisterChallenge }>Try Again</button>
+                    <button className="retryButton nobackground" onClick={ fetchRegisterChallenge }>Try Again</button>
                 </div>
                 )
                 : state === DEVICE_INELIGIBLE
                 ? (
                 <div className="horizontalCenter">
                     <div>Device is not eligible. It might already by registered.</div>
-                    <button className="retryButton" onClick={ fetchRegisterChallenge }>Try Again</button>
+                    <button className="retryButton nobackground" onClick={ fetchRegisterChallenge }>Try Again</button>
                 </div>
                 )
                 : state === FAILED
                 ? (
                 <div className="horizontalCenter">
                     <div>Something went wrong :(</div>
-                    <button className="retryButton" onClick={ fetchRegisterChallenge }>Try Again</button>
+                    <button className="retryButton nobackground" onClick={ fetchRegisterChallenge }>Try Again</button>
                 </div>
                 )
                 : null
