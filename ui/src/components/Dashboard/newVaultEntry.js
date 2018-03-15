@@ -49,6 +49,7 @@ class NewVaultEntry extends Component {
             <div className="newVaultEntry">
                 <form className="whiteContainer">
                     <h2>Add to Vault</h2>
+                    This will encrypt secret contents with all of your public keys and put the encrypted values in the vault.
                     <input name="title" type="text" placeholder="Title" onChange={ this.handleInputChange } value={ title } />
                     <textarea name="secret" placeholder="Secret Contents..." onChange={ this.handleInputChange } value={ secret } />
                     {

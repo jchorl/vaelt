@@ -7,7 +7,7 @@
 
 .newVaultEntry .whiteContainer {
   margin: 40px;
-  min-width: 500px;
+  width: 500px;
 }
 
 .newVaultEntry .errorText {

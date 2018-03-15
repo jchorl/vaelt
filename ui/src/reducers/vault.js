@@ -18,7 +18,9 @@ export default function vault(state = defaultState, action) {
         case FETCH_VAULT_ALL_REQUEST:
             return state.set('isFetching', true);
         case ADD_TO_VAULT_SUCCESS:
-            state = state.set('lastAdded', action.entries.get(0).get('title'));
+            state = state
+                .set('lastAdded', action.entries.get(0).get('title'))
+                .delete('error');
             // fall through
         case FETCH_VAULT_ALL_SUCCESS:
             return state.merge({

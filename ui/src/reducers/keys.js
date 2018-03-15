@@ -47,7 +47,7 @@ export default function keys(state = defaultState, action) {
                     action.key.update('createdAt', c => new Date(c)))
                     .sort((k1, k2) => k1.get('createdAt') < k2.get('createdAt')))
                 // clear the error
-                .set('error', undefined);
+                .delete('error');
         case KEY_POST_FAILURE:
         case REVOKE_KEY_FAILURE:
             return state.set('error', action.error);

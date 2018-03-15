@@ -125,7 +125,9 @@ export function noContentResponse(dispatch, success, failure) {
 export function reqFailure(dispatch, failure) {
     return function(error) {
         const m = Map({ message: error.message })
-        dispatch(failure(m));
+        if (failure) {
+            dispatch(failure(m));
+        }
         return Promise.reject(m);
     }
 }

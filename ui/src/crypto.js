@@ -18,7 +18,14 @@ export async function encrypt(secret, keyID, armoredKey) {
     };
 
     const encryptedMessage = await openpgp.encrypt(options)
-        .then(ciphertext => ciphertext.data);
+        .then(
+            ciphertext => ciphertext.data,
+            err => {
+                console.error(err);
+                const m = Map({ message: err.message, key: keyID });
+                return Promise.reject(m);
+            }
+        );
 
     return Map({
         encryptedMessage,

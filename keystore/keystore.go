@@ -185,7 +185,11 @@ func ProxyHandler(c echo.Context) error {
 		return err
 	}
 	defer resp.Body.Close()
-	return c.Stream(http.StatusOK, "text/plain", resp.Body)
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "text/plain"
+	}
+	return c.Stream(resp.StatusCode, contentType, resp.Body)
 }
 
 // Put saves a key

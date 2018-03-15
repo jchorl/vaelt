@@ -85,26 +85,34 @@ export function addToVault(title, secret) {
             return Promise.reject(m);
         }
 
-        let entries;
         try {
             await dispatch(fetchKeysIfNeeded());
-            const publicKeys = getState().keys.get('keys').filter(k => k.get('type') === 'public');
+        } catch (err) {
+            dispatch(addToVaultFailure(err));
+            return Promise.reject(err);
+        }
+
+        const publicKeys = getState().keys.get('keys').filter(k => k.get('type') === 'public');
+        let entries;
+        try {
             entries = await Promise.all(
                 publicKeys.map(key => {
                     if (!!key.get('url')) {
-                        return dispatch(fetchArmoredKeyByURL(key.get('url'))).then(
-                            armoredKey => encrypt(secret, key.get('id'), armoredKey)
+                        return dispatch(fetchArmoredKeyByURL(key.get('id'), key.get('url'))).then(
+                            armoredKey => encrypt(secret, key.get('id'), armoredKey),
+                            err => Promise.reject(err)
                         );
                     }
                     return encrypt(secret, key.get('id'), key.get('armoredKey'));
                 })
             );
-
-            entries = entries.map(entry => entry.set('title', title));
-        } catch (e) {
-            dispatch(addToVaultFailure(e));
-            return Promise.reject(e);
+        } catch (err) {
+            const name = publicKeys.find(k => k.get('id') === err.get('key')).get('name');
+            const m = err.update('message', message => `Failed to encrypt using key "${name}". Consider checking that the key is valid. Error message: ${message}`);
+            dispatch(addToVaultFailure(m));
+            return Promise.reject(m);
         }
+        entries = entries.map(entry => entry.set('title', title));
 
         let headers = new Headers();
         headers.append('Accept', 'application/json');
@@ -122,7 +130,7 @@ export function addToVault(title, secret) {
     }
 }
 
-function fetchArmoredKeyByURL(url) {
+function fetchArmoredKeyByURL(keyID, url) {
     return function(dispatch) {
         // keyUrl won't get the raw cert
         let rawKeyURL = new URL(url);
@@ -137,8 +145,11 @@ function fetchArmoredKeyByURL(url) {
             rawKeyURL = proxyURL;
         }
         return fetch(rawKeyURL).then(
-            stringResponse(dispatch, undefined, addToVaultFailure),
-            reqFailure(dispatch, addToVaultFailure)
+            stringResponse(),
+            reqFailure()
+        ).then(
+            resp => resp,
+            err => Promise.reject(err.set('key', keyID))
         );
     }
 }

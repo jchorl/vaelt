@@ -5,7 +5,7 @@
 
 .account .accountContainer {
   margin: 40px;
-  min-width: 688px;
+  width: 688px;
   box-sizing: border-box;
 }
 
