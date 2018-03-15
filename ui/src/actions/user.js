@@ -1,4 +1,4 @@
-import { jsonResponse, noContentResponse } from './parseResponse';
+import { jsonResponse, noContentResponse, reqFailure } from './parseResponse';
 
 export const FETCH_USER_REQUEST = 'FETCH_USER_REQUEST';
 function requestUser() {
@@ -41,7 +41,8 @@ export function fetchUserIfNeeded() {
             headers: headers,
         })
             .then(
-                jsonResponse(dispatch, receiveUserSuccess, receiveUserFailure)
+                jsonResponse(dispatch, receiveUserSuccess, receiveUserFailure),
+                reqFailure(dispatch, receiveUserFailure)
             );
     };
 }
@@ -77,7 +78,8 @@ export function logout() {
             credentials: 'same-origin',
         })
             .then(
-                noContentResponse(dispatch, receiveLogoutSuccess, receiveLogoutFailure)
+                noContentResponse(dispatch, receiveLogoutSuccess, receiveLogoutFailure),
+                reqFailure(dispatch, receiveLogoutFailure)
             );
     };
 }

@@ -23,7 +23,12 @@ export default function vault(state = defaultState, action) {
         case FETCH_VAULT_ALL_SUCCESS:
             return state.merge({
                 // entries need to be keyed by title
-                entries: state.get('entries').merge(action.entries.groupBy(e => e.get('title'))),
+                entries: state.get('entries')
+                .valueSeq()
+                .flatten(true)
+                .concat(action.entries)
+                .toList()
+                .groupBy(e => e.get('title')),
                 receivedAt: action.receivedAt,
                 isFetching: false,
             });
@@ -34,6 +39,7 @@ export default function vault(state = defaultState, action) {
                 .valueSeq()
                 .flatten(true)
                 .filter(e => e.get('key') !== action.id)
+                .toList()
                 .groupBy(e => e.get('title'))
             );
         case FETCH_VAULT_ALL_FAILURE:

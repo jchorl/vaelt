@@ -1,4 +1,5 @@
-import { jsonResponse } from './parseResponse';
+import { Map } from 'immutable';
+import { jsonResponse, stringResponse, reqFailure } from './parseResponse';
 import { fetchKeysIfNeeded } from './keys';
 import { encrypt } from '../crypto';
 
@@ -43,7 +44,8 @@ export function fetchAllFromVaultIfNeeded() {
             headers: headers,
         })
             .then(
-                jsonResponse(dispatch, receiveVaultAllSuccess, receiveVaultAllFailure)
+                jsonResponse(dispatch, receiveVaultAllSuccess, receiveVaultAllFailure),
+                reqFailure(dispatch, receiveVaultAllFailure)
             );
     };
 }
@@ -76,12 +78,26 @@ export function addToVault(title, secret) {
     return async function(dispatch, getState) {
         dispatch(addToVaultRequest());
 
+        // if they are trying to add a duplicate, tell them to update it
+        if (getState().vault.hasIn(['entries', title])) {
+            const m = Map({ message: 'Cannot add an entry with the same title. Please update the entry instead.' });
+            dispatch(addToVaultFailure(m));
+            return Promise.reject(m);
+        }
+
         let entries;
         try {
             await dispatch(fetchKeysIfNeeded());
             const publicKeys = getState().keys.get('keys').filter(k => k.get('type') === 'public');
             entries = await Promise.all(
-                publicKeys.map(key => encrypt(secret, key))
+                publicKeys.map(key => {
+                    if (!!key.get('url')) {
+                        return dispatch(fetchArmoredKeyByURL(key.get('url'))).then(
+                            armoredKey => encrypt(secret, key.get('id'), armoredKey)
+                        );
+                    }
+                    return encrypt(secret, key.get('id'), key.get('armoredKey'));
+                })
             );
 
             entries = entries.map(entry => entry.set('title', title));
@@ -100,7 +116,29 @@ export function addToVault(title, secret) {
             body: JSON.stringify(entries),
         })
             .then(
-                jsonResponse(dispatch, addToVaultSuccess, addToVaultFailure)
+                jsonResponse(dispatch, addToVaultSuccess, addToVaultFailure),
+                reqFailure(dispatch, addToVaultFailure)
             );
+    }
+}
+
+function fetchArmoredKeyByURL(url) {
+    return function(dispatch) {
+        // keyUrl won't get the raw cert
+        let rawKeyURL = new URL(url);
+        rawKeyURL.searchParams.set('options', 'mr');
+        // http reqs must be proxied due to mixed content requirements on chrome. e.g.
+        // sks-keyservers uses their own custom signed cert.
+        // fetch wont fetch over http (mixed content) and wont allow you to pin a cert
+        // so just proxy through vaelt.
+        if (rawKeyURL.protocol === 'http:') {
+            let proxyURL = new URL('/api/keys/proxy', window.location);
+            proxyURL.searchParams.set('url', rawKeyURL.toString());
+            rawKeyURL = proxyURL;
+        }
+        return fetch(rawKeyURL).then(
+            stringResponse(dispatch, undefined, addToVaultFailure),
+            reqFailure(dispatch, addToVaultFailure)
+        );
     }
 }

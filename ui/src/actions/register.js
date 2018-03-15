@@ -1,4 +1,4 @@
-import { noContentResponse } from './parseResponse';
+import { noContentResponse, reqFailure } from './parseResponse';
 
 export const FETCH_REGISTER_REQUEST = 'FETCH_REGISTER_REQUEST';
 function requestRegister() {
@@ -37,7 +37,8 @@ export function register(email, password, keys) {
             headers: headers,
         })
             .then(
-                noContentResponse(dispatch, receiveRegisterSuccess, receiveRegisterFailure)
+                noContentResponse(dispatch, receiveRegisterSuccess, receiveRegisterFailure),
+                reqFailure(dispatch, receiveRegisterFailure)
             );
     };
 }

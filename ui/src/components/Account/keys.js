@@ -59,7 +59,9 @@ class Keys extends Component {
         }
     }
 
-    addFromYubikey = async () => {
+    addFromYubikey = async e => {
+        e.preventDefault();
+
         const url = await getPublicKey();
         const { name } = this.state;
         const key = {
@@ -71,7 +73,9 @@ class Keys extends Component {
         this.props.addKey(key);
     }
 
-    addFromURL = () => {
+    addFromURL = e => {
+        e.preventDefault();
+
         const { name, url } = this.state;
         const key = {
             name,
@@ -82,7 +86,9 @@ class Keys extends Component {
         this.props.addKey(key);
     }
 
-    addFromArmoredKey = () => {
+    addFromArmoredKey = e => {
+        e.preventDefault();
+
         const { name, armoredKey } = this.state;
         const key = {
             name,
@@ -172,45 +178,45 @@ class Keys extends Component {
                     ? (
                     <div>
                         Add from Yubikey
-                        <div className="nameForm">
+                        <form className="nameForm">
                             <input type="text" name="name" placeholder="Name" onChange={ this.handleInputChange } value={ name }/>
                             <div>
-                                <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
-                                <button className="purple" onClick={ this.addFromYubikey }>Add</button>
+                                <button type="button" className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                                <button type="submit" className="purple" onClick={ this.addFromYubikey }>Add</button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                     )
                     : state === ADD_FROM_URL
                     ? (
                     <div>
                         Add from URL
-                        <div className="nameUrlForm">
+                        <form className="nameUrlForm">
                             <div className="urlForm">
                                 <input type="text" name="name" placeholder="Name" onChange={ this.handleInputChange } value={ name }/>
                                 <input type="text" name="url" placeholder="URL" onChange={ this.handleInputChange } value={ url }/>
                             </div>
                             <div className="urlFormButtons">
-                                <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
-                                <button className="purple" onClick={ this.addFromURL }>Add</button>
+                                <button type="button" className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                                <button type="submit" className="purple" onClick={ this.addFromURL }>Add</button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                     )
                     : state === ADD_FROM_KEY
                     ? (
                     <div>
                         Add from Armored Key
-                        <div className="nameKeyForm">
+                        <form className="nameKeyForm">
                             <div className="keyForm">
                                 <input type="text" name="name" placeholder="Name" onChange={ this.handleInputChange } value={ name }/>
                                 <textarea name="armoredKey" placeholder="Armored Key..." onChange={ this.handleInputChange } value={ armoredKey }/>
                             </div>
                             <div className="keyFormButtons">
-                                <button className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
-                                <button className="purple" onClick={ this.addFromArmoredKey }>Add</button>
+                                <button type="button" className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                                <button type="submit" className="purple" onClick={ this.addFromArmoredKey }>Add</button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                     )
                     : null

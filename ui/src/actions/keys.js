@@ -1,4 +1,4 @@
-import { jsonResponse, stringResponse } from './parseResponse';
+import { jsonResponse, stringResponse, reqFailure } from './parseResponse';
 
 export const FETCH_KEYS_REQUEST = 'FETCH_KEYS_REQUEST';
 function requestKeys() {
@@ -41,7 +41,8 @@ export function fetchKeysIfNeeded() {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveKeysSuccess, receiveKeysFailure)
+                jsonResponse(dispatch, receiveKeysSuccess, receiveKeysFailure),
+                reqFailure(dispatch, receiveKeysFailure)
             );
     };
 }
@@ -83,7 +84,8 @@ export function addKey(key) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, keyPostSuccess, keyPostFailure)
+                jsonResponse(dispatch, keyPostSuccess, keyPostFailure),
+                reqFailure(dispatch, keyPostFailure)
             );
     };
 }
@@ -124,7 +126,8 @@ export function revokeKey(id) {
             headers,
         })
             .then(
-                stringResponse(dispatch, revokeKeySuccess, revokeKeyFailure)
+                stringResponse(dispatch, revokeKeySuccess, revokeKeyFailure),
+                reqFailure(dispatch, revokeKeyFailure)
             );
     };
 }
@@ -158,7 +161,8 @@ export function fetchKeysForVaultEntry(title) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, undefined, receiveKeysForVaultEntryFailure)
+                jsonResponse(dispatch, undefined, receiveKeysForVaultEntryFailure),
+                reqFailure(dispatch, receiveKeysForVaultEntryFailure)
             );
     };
 }
@@ -171,7 +175,7 @@ function requestKeyByID() {
 }
 
 export const FETCH_KEY_BY_ID_FAILURE = 'FETCH_KEY_BY_ID_FAILURE';
-function receiveKeyByIDFailure(error) {
+function fetchKeyByIDFailure(error) {
     return {
         type: FETCH_KEY_BY_ID_FAILURE,
         error,
@@ -190,7 +194,8 @@ export function fetchKeyByID(id) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, undefined, receiveKeyByIDFailure)
+                jsonResponse(dispatch, undefined, fetchKeyByIDFailure),
+                reqFailure(dispatch, fetchKeyByIDFailure)
             );
     };
 }

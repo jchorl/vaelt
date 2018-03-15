@@ -1,4 +1,4 @@
-import { jsonResponse, stringResponse } from './parseResponse';
+import { jsonResponse, stringResponse, reqFailure } from './parseResponse';
 
 export const FETCH_REGISTER_CHALLENGE_REQUEST = 'FETCH_REGISTER_CHALLENGE_REQUEST';
 function requestRegisterChallenge() {
@@ -36,7 +36,8 @@ export function fetchRegisterChallenge() {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveRegisterChallengeSuccess, receiveRegisterChallengeFailure)
+                jsonResponse(dispatch, receiveRegisterChallengeSuccess, receiveRegisterChallengeFailure),
+                reqFailure(dispatch, receiveRegisterChallengeFailure)
             );
     };
 }
@@ -78,7 +79,8 @@ export function fetchRegisterFinish(resp) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveRegisterFinishSuccess, receiveRegisterFinishFailure)
+                jsonResponse(dispatch, receiveRegisterFinishSuccess, receiveRegisterFinishFailure),
+                reqFailure(dispatch, receiveRegisterFinishFailure)
             );
     };
 }
@@ -119,7 +121,8 @@ export function fetchSignChallenge() {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveSignChallengeSuccess, receiveSignChallengeFailure)
+                jsonResponse(dispatch, receiveSignChallengeSuccess, receiveSignChallengeFailure),
+                reqFailure(dispatch, receiveSignChallengeFailure)
             );
     };
 }
@@ -161,7 +164,8 @@ export function fetchSignFinish(resp) {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveSignFinishSuccess, receiveSignFinishFailure)
+                jsonResponse(dispatch, receiveSignFinishSuccess, receiveSignFinishFailure),
+                reqFailure(dispatch, receiveSignFinishFailure)
             );
     };
 }
@@ -207,7 +211,8 @@ export function fetchRegistrationsIfNeeded() {
             headers,
         })
             .then(
-                jsonResponse(dispatch, receiveRegistrationsSuccess, receiveRegistrationsFailure)
+                jsonResponse(dispatch, receiveRegistrationsSuccess, receiveRegistrationsFailure),
+                reqFailure(dispatch, receiveRegistrationsFailure)
             );
     };
 }
@@ -248,7 +253,8 @@ export function deleteRegistration(id) {
             headers,
         })
             .then(
-                stringResponse(dispatch, receiveDeleteRegistrationSuccess, receiveDeleteRegistrationFailure)
+                stringResponse(dispatch, receiveDeleteRegistrationSuccess, receiveDeleteRegistrationFailure),
+                reqFailure(dispatch, receiveDeleteRegistrationFailure)
             );
     };
 }

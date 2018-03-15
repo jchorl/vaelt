@@ -1,4 +1,4 @@
-import { jsonResponse } from './parseResponse';
+import { jsonResponse, reqFailure } from './parseResponse';
 
 export const FETCH_LOGIN_REQUEST = 'FETCH_LOGIN_REQUEST';
 function requestLogin() {
@@ -36,7 +36,8 @@ export function login(email, password) {
             headers: headers,
         })
             .then(
-                jsonResponse(dispatch, receiveLoginSuccess, receiveLoginFailure)
+                jsonResponse(dispatch, receiveLoginSuccess, receiveLoginFailure),
+                reqFailure(dispatch, receiveLoginFailure)
             )
     };
 }
