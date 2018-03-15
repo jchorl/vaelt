@@ -13,6 +13,7 @@ import {
     REVOKE_KEY_SUCCESS,
     FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS,
     FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
+    FETCH_PASSWORD_PRIVATE_KEY_FAILURE,
 } from '../actions/keys';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
@@ -61,6 +62,7 @@ export default function vault(state = defaultState, action) {
             return state.setIn(['titleToKeys', action.title], action.keys);
         case DECRYPTION_SUCCESS:
             return state.set('yubikeyTapRequired', false).delete('decryptionError');
+        case FETCH_PASSWORD_PRIVATE_KEY_FAILURE:
         case DECRYPTION_FAILURE:
             return state.set('decryptionError', action.error);
         case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:

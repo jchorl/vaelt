@@ -1,8 +1,9 @@
 import { Map } from 'immutable';
 import { jsonResponse, stringResponse, reqFailure } from './parseResponse';
 import { fetchKeysIfNeeded } from './keys';
-import { encrypt, decryptUsingSessionKey } from '../crypto';
+import { encrypt, decryptUsingSessionKey, decryptUsingPrivateKey } from '../crypto';
 import { initDecryption, finishDecryption } from '../yubikey';
+import { fetchPasswordPrivateKey } from './keys';
 
 export const FETCH_VAULT_ALL_REQUEST = 'FETCH_VAULT_ALL_REQUEST';
 function requestVaultAll() {
@@ -196,7 +197,16 @@ export function decrypt(key, title, secret) {
         switch (key.get('device')) {
             case 'password':
                 // fetch the private key
-                break;
+                try {
+                    const privateKey = await dispatch(fetchPasswordPrivateKey());
+                    const decrypted = await decryptUsingPrivateKey(ciphertext, privateKey.get('armoredKey'), secret);
+                    dispatch(decryptionSuccess());
+                    return decrypted;
+                } catch (e) {
+                    const m = Map({ message: e.message });
+                    dispatch(decryptionFailure(m));
+                    return Promise.reject(m);
+                }
             case 'yubikey':
                 try {
                     await initDecryption(secret, ciphertext);

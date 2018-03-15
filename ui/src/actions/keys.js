@@ -216,3 +216,27 @@ export function fetchKeyByID(id) {
             );
     };
 }
+
+export const FETCH_PASSWORD_PRIVATE_KEY_FAILURE = 'FETCH_PASSWORD_PRIVATE_KEY_FAILURE';
+function fetchPasswordPrivateKeyFailure(error) {
+    return {
+        type: FETCH_PASSWORD_PRIVATE_KEY_FAILURE,
+        error,
+    }
+}
+
+export function fetchPasswordPrivateKey() {
+    return function(dispatch) {
+        let headers = new Headers();
+        headers.append('Accept', 'application/json');
+        return fetch('/api/keys/password', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: headers,
+        })
+            .then(
+                jsonResponse(dispatch, undefined, fetchPasswordPrivateKeyFailure),
+                reqFailure(dispatch, fetchPasswordPrivateKeyFailure)
+            );
+    };
+}

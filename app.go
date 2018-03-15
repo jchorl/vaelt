@@ -39,6 +39,7 @@ func init() {
 	keyGroup := e.Group("/api/keys")
 	keyGroup.GET("", keystore.GetAllHandler, auth.AuthReadMiddlewares...)
 	keyGroup.GET("/:id", keystore.GetHandler, auth.AuthReadMiddlewares...)
+	keyGroup.GET("/password", keystore.GetPasswordPrivateKeyHandler, auth.AuthReadMiddlewares...)
 	keyGroup.GET("/proxy", keystore.ProxyHandler)
 	keyGroup.POST("", keystore.PostHandler, auth.AuthWriteMiddlewares...)
 	keyGroup.DELETE("/:id", keystore.RevokeHandler, auth.AuthWriteMiddlewares...)

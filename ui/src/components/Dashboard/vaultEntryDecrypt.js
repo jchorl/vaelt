@@ -10,6 +10,7 @@ import './vaultEntryDecrypt.css';
 
 const NONE = Symbol('NONE');
 const PIN_REQUIRED = Symbol('PIN_REQUIRED');
+const PASSWORD_REQUIRED = Symbol('PASSWORD_REQUIRED');
 const TAP_REQUIRED = Symbol('TAP_REQUIRED');
 const DECRYPTED = Symbol('DECRYPTED');
 
@@ -62,6 +63,18 @@ class Decrypt extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
+        if (this.props.title !== nextProps.title) {
+            const keyKeys = nextProps.vault.getIn(['entries', nextProps.title]).map(e => e.get('key'));
+            nextProps.fetchKeysForVaultEntryIfNeeded(nextProps.title, keyKeys);
+
+            this.state = {
+                decrypted: '',
+                password: '',
+                pin: '',
+                state: NONE,
+            };
+        }
+
         if (
             !this.props.vault.get('yubikeyTapRequired') &&
             nextProps.vault.get('yubikeyTapRequired')
@@ -93,7 +106,10 @@ class Decrypt extends Component {
         switch (key.get('device')) {
             case 'password':
                 // fetch the private key
-                console.log('should prompt for password');
+                this.setState({
+                    state: PASSWORD_REQUIRED,
+                    key,
+                });
                 break;
             case 'yubikey':
                 this.setState({
@@ -131,6 +147,8 @@ class Decrypt extends Component {
                 state: DECRYPTED,
                 pin: '',
                 password: '',
+                copySuccess: false,
+                copyFailed: false,
             });
             setTimeout(() => {
                 this.setState({
@@ -169,11 +187,13 @@ class Decrypt extends Component {
         }
 
         const copyTextarea = document.getElementById('decryptedText');
+        copyTextarea.removeAttribute('disabled');
         copyTextarea.focus();
         copyTextarea.select();
 
         try {
             const successful = document.execCommand('copy');
+            copyTextarea.setAttribute('disabled', '');
             if (successful) {
                 this.setState({ copySuccess: true });
             } else {
@@ -189,6 +209,7 @@ class Decrypt extends Component {
             state,
             key,
             pin,
+            password,
             decrypted,
             copySuccess,
             copyFailed,
@@ -219,7 +240,7 @@ class Decrypt extends Component {
                 <div className="decryptedContainer">
                     Decrypted:
                     <div className="decrypted">
-                        <textarea id="decryptedText" value={ decrypted } disabled/>
+                        <textarea id="decryptedText" value={ decrypted } disabled />
                         <button className="nobackground" onClick={ this.copy }>
                             {
                             copySuccess
@@ -238,6 +259,19 @@ class Decrypt extends Component {
                     Decrypt using { key.get('name') }:
                     <form className="secretForm">
                         <input name="pin" type="password" placeholder="PIN" value={ pin } onChange={ this.handleInputChange }/>
+                        <div>
+                            <button type="button" className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
+                            <button type="submit" className="purple" onClick={ this.decrypt }>Decrypt</button>
+                        </div>
+                    </form>
+                </div>
+                )
+                : state === PASSWORD_REQUIRED
+                ? (
+                <div>
+                    Decrypt using { key.get('name') }:
+                    <form className="secretForm">
+                        <input name="password" type="password" placeholder="Password" value={ password } onChange={ this.handleInputChange }/>
                         <div>
                             <button type="button" className="nobackground" onClick={ this.transitionTo(NONE) }>Cancel</button>
                             <button type="submit" className="purple" onClick={ this.decrypt }>Decrypt</button>

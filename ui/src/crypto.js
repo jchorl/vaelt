@@ -42,3 +42,15 @@ export async function decryptUsingSessionKey(ciphertext, key, algorithm) {
     return msg.decrypt(null, null, [sessionKey])
         .then(message => message.getText())
 }
+
+export async function decryptUsingPrivateKey(ciphertext, privateKey, password) {
+    const privKeyObj = key.readArmored(privateKey).keys[0];
+    await privKeyObj.decrypt(password);
+
+    const options = {
+        message: message.readArmored(ciphertext),
+        privateKeys: [privKeyObj]
+    };
+
+    return openpgp.decrypt(options).then(plaintext => plaintext.data);
+}

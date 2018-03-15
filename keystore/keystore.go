@@ -102,6 +102,22 @@ func GetHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, key)
 }
 
+// GetPasswordPrivateKeyHandler gets the private key for a users password
+func GetPasswordPrivateKeyHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	passwordKey, err := getPasswordPrivateKey(ctx, userKey)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, passwordKey)
+}
+
 // PostHandler posts a new key
 func PostHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
@@ -265,4 +281,27 @@ func getByKeys(ctx context.Context, keyKeys []*datastore.Key, userKey *datastore
 	}
 
 	return keys, nil
+}
+
+func getPasswordPrivateKey(ctx context.Context, userKey *datastore.Key) (Key, error) {
+	var keys []Key
+	query := datastore.NewQuery(keyEntityType).
+		Filter("Type =", "private").
+		Filter("Name =", "Password").
+		Filter("Device =", "password").
+		Ancestor(userKey)
+	ks, err := query.GetAll(ctx, &keys)
+	if err != nil {
+		log.Errorf(ctx, "Failed to query password key: %+v", err)
+		return Key{}, err
+	}
+
+	if len(ks) != 1 {
+		return Key{}, echo.ErrNotFound
+	}
+
+	// use idx to modify the keys instead of copies
+	keys[0].ID = ks[0]
+
+	return keys[0], nil
 }
