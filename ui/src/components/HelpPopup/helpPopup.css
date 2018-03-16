@@ -1,6 +1,9 @@
 .helpPopup {
   cursor: pointer;
   position: relative;
+  font-size: 14px;
+  margin: 0 5px;
+  vertical-align: middle;
 }
 
 .helpPopup .message {
@@ -9,9 +12,9 @@
   width: 180px;
   bottom: 200%;
   left: -84px;
-  background: var(--light-blue);
+  background: var(--very-light-blue);
   color: var(--dark-blue);
-  font-size: 0.9em;
+  font-size: 14px;
   font-family: 'Cabin', sans-serif;
   padding: 10px;
   box-sizing: border-box;
@@ -26,7 +29,7 @@
   margin-left: -5px;
   border-width: 5px;
   border-style: solid;
-  border-color: var(--light-blue) transparent transparent transparent;
+  border-color: var(--very-light-blue) transparent transparent transparent;
 }
 
 .helpPopup:hover .message {

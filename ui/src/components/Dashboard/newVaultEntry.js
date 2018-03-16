@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { addToVault } from '../../actions/vault';
+import HelpPopup from '../HelpPopup';
 import './newVaultEntry.css';
 
 class NewVaultEntry extends Component {
@@ -48,11 +49,10 @@ class NewVaultEntry extends Component {
         return (
             <div className="newVaultEntry">
                 <form className="whiteContainer">
-                    <h2>Add to Vault</h2>
-                    This will encrypt secret contents with all of your public keys and put the encrypted values in the vault.
+                    <h2>Add to Vault <HelpPopup message="This will encrypt secret contents with all of your public keys and put the encrypted values in the vault." /></h2>
                     <div className="greyContainer">
-                        <input name="title" type="text" placeholder="Title" onChange={ this.handleInputChange } value={ title } />
-                        <textarea name="secret" placeholder="Secret Contents..." onChange={ this.handleInputChange } value={ secret } />
+                        <input className="title" name="title" type="text" placeholder="Title" onChange={ this.handleInputChange } value={ title } />
+                        <textarea className="secret" name="secret" placeholder="Secret Contents..." onChange={ this.handleInputChange } value={ secret } />
                         {
                         vault.has('error')
                         ? <div className="errorText">{ vault.getIn(['error', 'message']) }</div>

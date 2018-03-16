@@ -17,3 +17,11 @@
 .newVaultEntry button {
   margin: 0;
 }
+
+.newVaultEntry .title, .newVaultEntry .secret {
+  min-width: 15em;
+}
+
+.newVaultEntry .secret {
+  min-height: 5em;
+}
