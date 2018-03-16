@@ -281,17 +281,65 @@ export async function initDecryption(pin, armoredCiphertext) {
 
 export async function finishDecryption() {
     // start polling
+    // DEK will either be 16 or 32 bytes
+    let key = new Uint8Array();
     for (let j = 0; j < 20; ++j) {
         let resp = await decryptionDevice.transferIn(0x02, 65556);
-        if (resp.data.getUint8(resp.data.byteLength - 2) === 0x90 && resp.data.getUint8(resp.data.byteLength - 1) === 0) {
+
+        // 0x61 means more content to come
+        if (resp.data.getUint8(resp.data.byteLength - 2) === 0x61) {
             // the first byte should be 0x09, which signifies aes256 algo
             if (resp.data.getUint8(10) !== 0x09) {
                 throw new Error('Unknown key algorithm detected');
             }
 
-            // from index 11, to the end - 2 (0x90 0x00)
+            // the last two digits will signify more data, so subtract 2 from the length
+            const numToAdd = resp.data.byteLength - 2 - 11;
+            const oldKey = key;
+            key = new Uint8Array(oldKey.length + numToAdd);
+            key.set(oldKey, 0);
+            // need to take from 11 to the end, - 2
+            key.set(new Uint8Array(resp.data.buffer.slice(11, resp.data.byteLength - 2)), oldKey.length);
+
+            // the last number is the number of remaining bytes to read in
+            const remaining = resp.data.getUint8(resp.data.byteLength - 1);
+
+            // write out that the partial result has been received
+            await decryptionDevice.transferOut(0x02, Uint8Array.from([0x6F, 0x05, 0x00, 0x00, 0x00, 0x00, sequence++,
+                // p1 and p2 are empty
+                0x00, 0x00, 
+                // lc and data are empty
+                0x00, 0x00,
+                // continue sending
+                0xC0,
+                0x00, 0x00,
+                // send the expected remaining amount
+                remaining
+
+            ]));
+        } else if (resp.data.getUint8(resp.data.byteLength - 2) === 0x90 && resp.data.getUint8(resp.data.byteLength - 1) === 0) {
+            // if this is the first block, then the algo is specified, otherwise it has been specified in the first block
+            let start = 10;
+
+            // if no bytes have been read yet
+            if (key.length === 0) {
+                // the first byte should be 0x09, which signifies aes256 algo
+                if (resp.data.getUint8(10) !== 0x09) {
+                    throw new Error('Unknown key algorithm detected');
+                }
+
+                // start at 11 because the algo was specified in 10
+                start = 11;
+            }
+
+            // from start, to the end - 2 (0x90 0x00)
             // the key also has some verification digits on the end (maybe this is mdc, idk. but its 2 bytes)
-            let key = new Uint8Array(resp.data.buffer, 11, resp.data.byteLength - 2 - 11 - 2);
+            const numToAdd = resp.data.byteLength - 2 - start - 2;
+            const oldKey = key;
+            key = new Uint8Array(oldKey.length + numToAdd);
+            key.set(oldKey, 0);
+            // need to take from start to the end, - 2 - 2
+            key.set(new Uint8Array(resp.data.buffer.slice(start, resp.data.byteLength - 4)), oldKey.length);
             return key;
         }
         await new Promise(resolve => setTimeout(resolve, 500));

@@ -1,7 +1,3 @@
-.vaultEntryDecrypt .decryptButtons {
-  margin-top: 15px;
-}
-
 .vaultEntryDecrypt .secretForm {
   display: flex;
   justify-content: space-between;

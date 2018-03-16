@@ -15,6 +15,7 @@ export default class Entry extends Component {
             <div className="vaultEntry">
                 <div className="whiteContainer">
                     <h2>{ title }</h2>
+                    <div>Decrypt</div>
                     <VaultEntryDecrypt title={ title } />
                 </div>
             </div>

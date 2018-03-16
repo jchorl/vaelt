@@ -223,22 +223,16 @@ class Decrypt extends Component {
                 state === NONE
                 ? (
                 <div>
-                    <div>
-                        Decrypt
-                    </div>
-                    <div className="decryptButtons">
-                        {
-                        encryptingKeys.map(key =>
-                        <button key={ key } className="purple" onClick={ this.promptForSecret(key.get('id')) }>{ key.get('name') }</button>
-                        )
-                        }
-                    </div>
+                    {
+                    encryptingKeys.map(key =>
+                    <button key={ key } className="purple" onClick={ this.promptForSecret(key.get('id')) }>{ key.get('name') }</button>
+                    )
+                    }
                 </div>
                 )
                 : state === DECRYPTED
                 ? (
                 <div className="decryptedContainer">
-                    Decrypted:
                     <div className="decrypted">
                         <textarea id="decryptedText" value={ decrypted } disabled />
                         <button className="nobackground copyButton" onClick={ this.copy('decryptedText') }>
