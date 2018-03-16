@@ -8,11 +8,13 @@ import { decrypt } from '../../actions/vault';
 import CircularTimer from '../CircularTimer';
 import './vaultEntryDecrypt.css';
 
-const NONE = Symbol('NONE');
-const PIN_REQUIRED = Symbol('PIN_REQUIRED');
-const PASSWORD_REQUIRED = Symbol('PASSWORD_REQUIRED');
-const TAP_REQUIRED = Symbol('TAP_REQUIRED');
-const DECRYPTED = Symbol('DECRYPTED');
+// various states
+const NONE = Symbol('NONE'); // show decryption buttons
+const PIN_REQUIRED = Symbol('PIN_REQUIRED'); // pin required for yubikey
+const PASSWORD_REQUIRED = Symbol('PASSWORD_REQUIRED'); // password required for private key
+const TAP_REQUIRED = Symbol('TAP_REQUIRED'); // yubikey tap is required
+const DECRYPTED = Symbol('DECRYPTED'); // show the decrypted message
+const CIPHERTEXT = Symbol('CIPHERTEXT'); // for when vaelt cannot decrypt the message, it displays ciphertext
 
 class Decrypt extends Component {
     static propTypes = {
@@ -67,19 +69,14 @@ class Decrypt extends Component {
             const keyKeys = nextProps.vault.getIn(['entries', nextProps.title]).map(e => e.get('key'));
             nextProps.fetchKeysForVaultEntryIfNeeded(nextProps.title, keyKeys);
 
-            this.state = {
-                decrypted: '',
-                password: '',
-                pin: '',
-                state: NONE,
-            };
+            this.transitionTo(NONE)();
         }
 
         if (
             !this.props.vault.get('yubikeyTapRequired') &&
             nextProps.vault.get('yubikeyTapRequired')
         ) {
-            this.setState({ state: TAP_REQUIRED });
+            this.transitionTo(TAP_REQUIRED)();
             return;
         }
 
@@ -87,16 +84,23 @@ class Decrypt extends Component {
             !this.props.vault.has('decryptionError') &&
             nextProps.vault.has('decryptionError')
         ) {
-            this.setState({
-                state: NONE,
-                pin: '',
-                password: '',
-            });
+            this.transitionTo(NONE);
         }
     }
 
-    transitionTo = state => () => {
-        this.setState({ state });
+    transitionTo = state => extraState => {
+        const newState = { state, ...extraState };
+        if (state === NONE) {
+            newState.pin = '';
+            newState.password = '';
+            newState.decrypted = '';
+            newState.ciphertext = '';
+            newState.key = null;
+        } else if (state === DECRYPTED) {
+            newState.copySuccess = false;
+            newState.copyFailed = false;
+        }
+        this.setState(newState);
     }
 
     promptForSecret = id => () => {
@@ -106,19 +110,17 @@ class Decrypt extends Component {
         switch (key.get('device')) {
             case 'password':
                 // fetch the private key
-                this.setState({
-                    state: PASSWORD_REQUIRED,
-                    key,
-                });
+                this.transitionTo(PASSWORD_REQUIRED)({ key });
                 break;
             case 'yubikey':
-                this.setState({
-                    state: PIN_REQUIRED,
-                    key,
-                });
+                this.transitionTo(PIN_REQUIRED)({ key });
                 break;
             default:
-                console.log('should dispatch error');
+                const ciphertext = vault
+                    .getIn(['entries', title])
+                    .find(e => e.get('key') === id)
+                    .get('encryptedMessage');
+                this.transitionTo(CIPHERTEXT)({ ciphertext });
         }
     }
 
@@ -138,24 +140,13 @@ class Decrypt extends Component {
                 break;
             default:
                 console.error('Received unknown device type to decrypt');
+                return;
         }
 
         try {
             const decrypted = await decrypt(key, title, secret);
-            this.setState({
-                decrypted,
-                state: DECRYPTED,
-                pin: '',
-                password: '',
-                copySuccess: false,
-                copyFailed: false,
-            });
-            setTimeout(() => {
-                this.setState({
-                    decrypted: '',
-                    state: NONE,
-                });
-            }, 30 * 1000);
+            this.transitionTo(DECRYPTED)({ decrypted });
+            setTimeout(this.transitionTo(NONE), 30 * 1000);
         } catch (e) {
             // this should have been handled already in the action creator
         }
@@ -171,10 +162,19 @@ class Decrypt extends Component {
         });
     }
 
-    copy = () => {
-        const { decrypted } = this.state;
+    copy = elementId => () => {
+        let copyText;
+        let copyTextarea;
+        if (elementId === 'decryptedText') {
+            copyText = this.state.decrypted;
+            copyTextarea = document.getElementById('decryptedText');
+        } else {
+            copyText = this.state.ciphertext;
+            copyTextarea = document.getElementById('ciphertextText');
+        }
+
         if (!!navigator.clipboard) {
-            return navigator.clipboard.writeText(decrypted).then(
+            return navigator.clipboard.writeText(copyText).then(
                 () => {
                     this.setState({ copySuccess: true });
                     setTimeout(() => {
@@ -186,7 +186,6 @@ class Decrypt extends Component {
                 });
         }
 
-        const copyTextarea = document.getElementById('decryptedText');
         copyTextarea.removeAttribute('disabled');
         copyTextarea.focus();
         copyTextarea.select();
@@ -210,6 +209,7 @@ class Decrypt extends Component {
             key,
             pin,
             password,
+            ciphertext,
             decrypted,
             copySuccess,
             copyFailed,
@@ -241,7 +241,7 @@ class Decrypt extends Component {
                     Decrypted:
                     <div className="decrypted">
                         <textarea id="decryptedText" value={ decrypted } disabled />
-                        <button className="nobackground" onClick={ this.copy }>
+                        <button className="nobackground copyButton" onClick={ this.copy('decryptedText') }>
                             {
                             copySuccess
                             ? <i className="fa fa-check-circle"></i>
@@ -251,6 +251,26 @@ class Decrypt extends Component {
                             }
                         </button>
                     </div>
+                    <button className="purple" onClick={ this.transitionTo(NONE) }>Back</button>
+                </div>
+                )
+                : state === CIPHERTEXT
+                ? (
+                <div className="ciphertextContainer">
+                    Vaelt cannot decrypt this message. The encrypted value is:
+                    <div className="ciphertext">
+                        <textarea id="ciphertextText" value={ ciphertext } disabled />
+                        <button className="nobackground copyButton" onClick={ this.copy('ciphertextText') }>
+                            {
+                            copySuccess
+                            ? <i className="fa fa-check-circle"></i>
+                            : copyFailed
+                            ? <i className="fa fa-ban"></i>
+                            : <i className="fa fa-copy"></i>
+                            }
+                        </button>
+                    </div>
+                    <button className="purple" onClick={ this.transitionTo(NONE) }>Back</button>
                 </div>
                 )
                 : state === PIN_REQUIRED

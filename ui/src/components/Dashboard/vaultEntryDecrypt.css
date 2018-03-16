@@ -22,17 +22,25 @@
   align-items: center;
 }
 
-.vaultEntryDecrypt .decryptedContainer button {
+.vaultEntryDecrypt .decryptedContainer .copyButton, .vaultEntryDecrypt .ciphertextContainer .copyButton {
   padding: 5px;
   font-size: 1.1em;
 }
 
-.vaultEntryDecrypt .decrypted {
+.vaultEntryDecrypt .decrypted, .vaultEntryDecrypt .ciphertext {
   display: flex;
 }
 
 .vaultEntryDecrypt #decryptedText {
   background: white;
+  min-width: 15em;
+  min-height: 5em;
+}
+
+.vaultEntryDecrypt #ciphertextText {
+  background: white;
+  min-width: 40em;
+  min-height: 20em;
 }
 
 .vaultEntry .errorText {
