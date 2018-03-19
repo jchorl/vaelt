@@ -70,7 +70,6 @@ class U2fRegistrations extends Component {
         const { registrations } = this.props;
         const { u2fEnforced } = this.state;
 
-        // TODO make the disable switch actually disable
         return (
             <div className="u2fRegistrations">
                 <h2>Two-Factor Auth</h2>

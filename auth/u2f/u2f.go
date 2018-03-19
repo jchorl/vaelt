@@ -405,7 +405,7 @@ func fetchRegistrations(ctx context.Context, userKey *datastore.Key) ([]Registra
 }
 
 type counter struct {
-	c int32
+	C int32
 }
 
 func saveCounter(ctx context.Context, keyHandle []byte, count uint32, userKey *datastore.Key) error {
@@ -431,7 +431,7 @@ func fetchCounter(ctx context.Context, keyHandle []byte, userKey *datastore.Key)
 		return 0, err
 	}
 
-	var converted uint32 = uint32(c.c)
+	var converted uint32 = uint32(c.C)
 	return converted, nil
 }
 
