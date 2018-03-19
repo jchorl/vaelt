@@ -257,21 +257,16 @@ function yubikeyTapRequired(taskID) {
 // errors and other state messages are keyed by taskID
 export function decrypt(key, ciphertext, secret, taskID) {
     return async function(dispatch, getState) {
-        switch (key.get('device')) {
-            case 'password':
-                // fetch the private key
-                try {
+        try {
+            switch (key.get('device')) {
+                case 'password': {
+                    // fetch the private key
                     const privateKey = await dispatch(fetchPasswordPrivateKey());
                     const decrypted = await decryptUsingPrivateKey(ciphertext, privateKey.get('armoredKey'), secret);
                     dispatch(decryptionSuccess(taskID));
                     return decrypted;
-                } catch (e) {
-                    const m = Map({ message: e.message, taskID });
-                    dispatch(decryptionFailure(m));
-                    return Promise.reject(m);
                 }
-            case 'yubikey':
-                try {
+                case 'yubikey': {
                     await initDecryption(secret, ciphertext);
 
                     // dispatch the tap required
@@ -281,15 +276,21 @@ export function decrypt(key, ciphertext, secret, taskID) {
                     const decrypted = await decryptUsingSessionKey(ciphertext, decryptionKey, 'aes256');
                     dispatch(decryptionSuccess(taskID));
                     return decrypted;
-                } catch (e) {
-                    const m = Map({ message: e.message, taskID });
+                }
+                default: {
+                    const m = Map({ message: 'Only decryption by Yubikey or password is supported', taskID });
                     dispatch(decryptionFailure(m));
                     return Promise.reject(m);
                 }
-            default:
-                const m = Map({ message: 'Only decryption by Yubikey or password is supported', taskID });
-                dispatch(decryptionFailure(m));
-                return Promise.reject(m);
+            }
+        } catch (e) {
+            // the error may have already been parsed
+            let m = Map({ message: e.message, taskID });
+            if (Map.isMap(e)) {
+                m = Map({ message: e.get('message'), taskID });
+            }
+            dispatch(decryptionFailure(m));
+            return Promise.reject(m);
         }
     }
 }

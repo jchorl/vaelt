@@ -9,6 +9,7 @@ import {
     revokeKey
 } from '../../actions/keys';
 import { getPublicKey } from '../../yubikey';
+import ConfirmationDialog from '../ConfirmationDialog';
 import './keys.css';
 
 const NONE = Symbol('NONE');
@@ -42,6 +43,7 @@ class Keys extends Component {
             name: '',
             url: '',
             armoredKey: '',
+            showDialog: false,
         };
     }
 
@@ -104,7 +106,16 @@ class Keys extends Component {
     }
 
     revoke = id => () => {
+        this.hideRevokeDialog();
         this.props.revokeKey(id);
+    }
+
+    showRevokeDialog = id => () => {
+        this.setState({ showDialog: true, idToRevoke: id });
+    }
+
+    hideRevokeDialog = () => {
+        this.setState({ showDialog: false, idToRevoke: null });
     }
 
     show = id => async () => {
@@ -139,13 +150,24 @@ class Keys extends Component {
     }
 
     render() {
-        const { state, name, url, armoredKey } = this.state;
+        const { state, name, url, armoredKey, showDialog, idToRevoke } = this.state;
         const { keys } = this.props;
         const allKeys = keys.get('keys');
 
+        let revokeConfirmationMessage, revokeButtonText;
+        if (showDialog) {
+            const key = keys.get('keys').find(k => k.get('id') === idToRevoke);
+            if (key.get('type') === 'public') {
+                revokeButtonText = 'Revoke';
+                revokeConfirmationMessage = `Are you sure you want to revoke the key "${key.get('name')}"? You will no longer be able to decrypt vault entries with the corresponding private key. This cannot be undone.`;
+            } else {
+                revokeButtonText = 'Delete';
+                revokeConfirmationMessage = `Are you sure you want to delete the key "${key.get('name')}"? You will no longer be able to decrypt vault entries with this key after it is deleted. This cannot be undone.`;
+            }
+        }
+
         // TODO fix view when all keys are revoked
         // TODO encrypt all values with the new key if possible
-        // TODO warn when revoking a key
         return (
             <div className="keys">
                 <h2>Keys</h2>
@@ -161,7 +183,7 @@ class Keys extends Component {
                             <div className="keyCreatedAt">{ k.get('createdAt').toLocaleDateString() }</div>
                             <div className="keyButtons">
                                 <button className="nobackground" onClick={ this.show(k.get('id')) } >Show</button>
-                                <button className="danger" onClick={ this.revoke(k.get('id')) } >{ k.get('type') === 'public' ? 'Revoke' : 'Delete' }</button>
+                                <button className="danger" onClick={ this.showRevokeDialog(k.get('id')) } >{ k.get('type') === 'public' ? 'Revoke' : 'Delete' }</button>
                             </div>
                         </div>
                         ))
@@ -230,6 +252,12 @@ class Keys extends Component {
                     </div>
                     ) : null }
                 </div>
+                {
+                showDialog
+                ? (
+                <ConfirmationDialog message={ revokeConfirmationMessage } buttonText={ revokeButtonText } close={ this.hideRevokeDialog } onSuccess={ this.revoke(idToRevoke) } />
+                ) : null
+                }
             </div>
             );
     }

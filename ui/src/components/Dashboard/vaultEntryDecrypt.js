@@ -40,7 +40,6 @@ class Decrypt extends Component {
                     }).isRequired,
                 ).isRequired,
             ).isRequired,
-            yubikeyTapRequired: PropTypes.bool.isRequired,
         }).isRequired,
         version: PropTypes.number,
     }

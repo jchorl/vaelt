@@ -18,13 +18,11 @@ import {
     REVOKE_KEY_SUCCESS,
     FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS,
     FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
-    FETCH_PASSWORD_PRIVATE_KEY_FAILURE,
 } from '../actions/keys';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
 const defaultState = Map({
     isFetching: false,
-    yubikeyTapRequired: false,
     entries: OrderedMap(),
     titleToKeys: Map(),
 });
@@ -78,7 +76,6 @@ export default function vault(state = defaultState, action) {
             return state.setIn(['titleToKeys', action.title], action.keys);
         case DECRYPTION_SUCCESS:
             return state.set(action.taskID, Map());
-        case FETCH_PASSWORD_PRIVATE_KEY_FAILURE:
         case DECRYPTION_FAILURE:
             return state.setIn([action.error.get('taskID'), 'error'], action.error);
         case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
