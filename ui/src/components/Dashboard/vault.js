@@ -31,6 +31,7 @@ class Vault extends Component {
 
         this.state = {
             selected: Vault.newEntryTitle,
+            search: '',
         }
     }
 
@@ -39,23 +40,53 @@ class Vault extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (!this.props.vault.has('lastAdded') && nextProps.vault.has('lastAdded')) {
+        if (this.props.vault.get('lastAdded') !== nextProps.vault.get('lastAdded')) {
             this.setState({ selected: nextProps.vault.get('lastAdded') });
         }
+    }
+
+    handleInputChange = event => {
+        const target = event.target;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+        const name = target.name;
+
+        this.setState({
+            [name]: value,
+        });
     }
 
     select = title => () => {
         this.setState({ selected: title });
     }
 
-    render() {
-        const entries = this.props.vault.get('entries');
-        const { selected } = this.state;
+    cancelSearch = () => {
+        this.setState({ search: '' });
+    }
 
+    render() {
+        const { selected, search } = this.state;
+        let entries = this.props.vault.get('entries');
+
+        if (!!search) {
+            entries = entries.filter((_, title) => title.toLowerCase().includes(search.toLowerCase()));
+        }
+
+        // TODO figure out height display
         return (
             <div className="vault">
                 <div className="entryList">
-                    <div className={ classNames("entry", { active: selected === Vault.newEntryTitle }) } onClick={ this.select(Vault.newEntryTitle) }>New</div>
+                    <div className="searchBar">
+                        <i className="fa fa-search searchIcon"></i>
+                        <input type="text" name="search" value={ search } onChange={ this.handleInputChange } placeholder="Search..." />
+                        { !!search
+                        ? <i className="fa fa-times-circle cancelIcon" onClick={ this.cancelSearch }></i>
+                        : null }
+                    </div>
+                    {
+                    !search
+                    ? <div className={ classNames("entry", { active: selected === Vault.newEntryTitle }) } onClick={ this.select(Vault.newEntryTitle) }>New</div>
+                    : null
+                    }
                     { entries.keySeq().map(title => (
                     <div key={ title } className={ classNames("entry", { active: selected === title }) } onClick={ this.select(title) }>{ title }</div>
                     )) }

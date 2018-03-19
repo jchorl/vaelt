@@ -3,6 +3,35 @@
   display: flex;
 }
 
+.vault .searchBar {
+  display: flex;
+  align-items: center;
+  background: var(--light-grey);
+  margin: 10px 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.vault .searchBar .searchIcon {
+  color: var(--mid-grey);
+}
+
+.vault .searchBar input {
+  background: var(--light-grey);
+  border: none;
+  margin: 0;
+  box-shadow: none;
+  flex-grow: 1;
+}
+
+.vault .searchBar input:focus {
+  outline: none;
+}
+
+.vault .searchBar .cancelIcon {
+  cursor: pointer;
+}
+
 .vault .entryList {
   background-color: white;
   min-width: 280px;

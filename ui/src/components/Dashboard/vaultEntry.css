@@ -10,6 +10,6 @@
   min-width: 500px;
 }
 
-.vaultEntry .section {
+.vaultEntry .section:not(:last-child) {
   margin-bottom: 40px;
 }
