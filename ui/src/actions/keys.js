@@ -162,6 +162,12 @@ export function fetchKeysForVaultEntryIfNeeded(title, keyKeys) {
             return Promise.resolve();
         }
 
+        return dispatch(fetchKeysForVaultEntry(title, keyKeys));
+    };
+}
+
+export function fetchKeysForVaultEntry(title, keyKeys) {
+    return function(dispatch) {
         dispatch(requestKeysForVaultEntry());
 
         let keysURL = new URL('/api/keys', window.location);
@@ -181,7 +187,7 @@ export function fetchKeysForVaultEntryIfNeeded(title, keyKeys) {
                 ),
                 reqFailure(dispatch, receiveKeysForVaultEntryFailure)
             );
-    };
+    }
 }
 
 export const FETCH_KEY_BY_ID_REQUEST = 'FETCH_KEY_BY_ID_REQUEST';

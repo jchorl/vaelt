@@ -76,14 +76,34 @@ function addToVaultFailure(error) {
     }
 }
 
-export function addToVault(title, secret) {
+export const UPDATE_VAULT_SUCCESS = 'UPDATE_VAULT_SUCCESS';
+function updateVaultSuccess(entries) {
+    return {
+        type: UPDATE_VAULT_SUCCESS,
+        entries,
+        receivedAt: Date.now(),
+    }
+}
+
+export const UPDATE_VAULT_FAILURE = 'UPDATE_VAULT_FAILURE';
+function updateVaultFailure(error) {
+    return {
+        type: UPDATE_VAULT_FAILURE,
+        error,
+    }
+}
+
+export function addToVault(title, secret, isUpdate) {
     return async function(dispatch, getState) {
         dispatch(addToVaultRequest());
 
+        const failureHandler = isUpdate ? updateVaultFailure : addToVaultFailure;
+        const successHandler = isUpdate ? updateVaultSuccess : addToVaultSuccess;
+
         // if they are trying to add a duplicate, tell them to update it
-        if (getState().vault.hasIn(['entries', title])) {
+        if (!isUpdate && getState().vault.hasIn(['entries', title])) {
             const m = Map({ message: 'Cannot add an entry with the same title. Please update the entry instead.' });
-            dispatch(addToVaultFailure(m));
+            dispatch(failureHandler(m));
             return Promise.reject(m);
         }
 
@@ -91,7 +111,7 @@ export function addToVault(title, secret) {
         try {
             await dispatch(fetchKeysIfNeeded());
         } catch (err) {
-            dispatch(addToVaultFailure(err));
+            dispatch(failureHandler(err));
             return Promise.reject(err);
         }
         const publicKeys = getState().keys.get('keys').filter(k => k.get('type') === 'public');
@@ -115,7 +135,7 @@ export function addToVault(title, secret) {
             // give meaningful error when keys are invalid
             const name = publicKeys.find(k => k.get('id') === err.get('key')).get('name');
             const m = err.update('message', message => `Failed to encrypt using key "${name}". Consider checking that the key is valid. Error message: ${message}`);
-            dispatch(addToVaultFailure(m));
+            dispatch(failureHandler(m));
             return Promise.reject(m);
         }
 
@@ -133,8 +153,8 @@ export function addToVault(title, secret) {
             body: JSON.stringify(entries),
         })
             .then(
-                jsonResponse(dispatch, addToVaultSuccess, addToVaultFailure),
-                reqFailure(dispatch, addToVaultFailure)
+                jsonResponse(dispatch, successHandler, failureHandler),
+                reqFailure(dispatch, failureHandler)
             );
     }
 }

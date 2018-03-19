@@ -26,12 +26,14 @@ class Decrypt extends Component {
                 ImmutablePropTypes.listOf(
                     ImmutablePropTypes.contains({
                         key: PropTypes.string.isRequired,
+                        version: PropTypes.number.isRequired,
                     }).isRequired,
                 ).isRequired,
             ).isRequired,
             titleToKeys: ImmutablePropTypes.mapOf(
                 ImmutablePropTypes.listOf(
                     ImmutablePropTypes.contains({
+                        id: PropTypes.string.isRequired,
                         name: PropTypes.string.isRequired,
                     }).isRequired,
                 ).isRequired,
@@ -60,7 +62,9 @@ class Decrypt extends Component {
             vault,
         } = this.props;
 
-        const keyKeys = vault.getIn(['entries', title]).map(e => e.get('key'));
+        const keyKeys = vault.getIn(['entries', title])
+            .map(e => e.get('key'))
+            .toSet();
         fetchKeysForVaultEntryIfNeeded(title, keyKeys);
     }
 
@@ -203,6 +207,19 @@ class Decrypt extends Component {
         }
     }
 
+    getEncryptingKeys = () => {
+        const { vault, title } = this.props;
+
+        // get the encrypting keys, but only for the latest version
+        const currVersion = Math.max(...vault.getIn(['entries', title]).map(e => e.get('version')).toJS());
+        const keyIDs = vault.getIn(['entries', title])
+            .filter(e => e.get('version') === currVersion)
+            .map(e => e.get('key'))
+            .toSet();
+        const encryptingKeys = vault.getIn(['titleToKeys', title], List()).filter(k => keyIDs.contains(k.get('id')));
+        return encryptingKeys;
+    }
+
     render() {
         const {
             state,
@@ -214,8 +231,9 @@ class Decrypt extends Component {
             copySuccess,
             copyFailed,
         } = this.state;
-        const { title, vault } = this.props;
-        const encryptingKeys = vault.getIn(['titleToKeys', title], List());
+        const { vault } = this.props;
+
+        const encryptingKeys = this.getEncryptingKeys();
 
         return (
             <div className="greyContainer vaultEntryDecrypt">
@@ -225,7 +243,7 @@ class Decrypt extends Component {
                 <div>
                     {
                     encryptingKeys.map(key =>
-                    <button key={ key } className="purple" onClick={ this.promptForSecret(key.get('id')) }>{ key.get('name') }</button>
+                    <button key={ key.get('id') } className="purple" onClick={ this.promptForSecret(key.get('id')) }>{ key.get('name') }</button>
                     )
                     }
                 </div>

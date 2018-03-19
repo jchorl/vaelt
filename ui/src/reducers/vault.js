@@ -5,6 +5,8 @@ import {
     FETCH_VAULT_ALL_FAILURE,
     ADD_TO_VAULT_SUCCESS,
     ADD_TO_VAULT_FAILURE,
+    UPDATE_VAULT_SUCCESS,
+    UPDATE_VAULT_FAILURE,
     DECRYPTION_SUCCESS,
     DECRYPTION_FAILURE,
     YUBIKEY_TAP_REQUIRED,
@@ -27,10 +29,12 @@ export default function vault(state = defaultState, action) {
     switch (action.type) {
         case FETCH_VAULT_ALL_REQUEST:
             return state.set('isFetching', true);
+        case UPDATE_VAULT_SUCCESS:
         case ADD_TO_VAULT_SUCCESS:
             state = state
                 .set('lastAdded', action.entries.get(0).get('title'))
-                .delete('error');
+                .delete('error')
+                .delete('updateError');
             // fall through
         case FETCH_VAULT_ALL_SUCCESS:
             return state.merge({
@@ -68,6 +72,8 @@ export default function vault(state = defaultState, action) {
         case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
         case ADD_TO_VAULT_FAILURE:
             return state.set('error', action.error);
+        case UPDATE_VAULT_FAILURE:
+            return state.set('updateError', action.error);
         case FETCH_LOGOUT_SUCCESS:
             return defaultState;
         default:
