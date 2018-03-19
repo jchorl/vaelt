@@ -42,6 +42,8 @@ class Vault extends Component {
     componentWillReceiveProps(nextProps) {
         if (this.props.vault.get('lastAdded') !== nextProps.vault.get('lastAdded')) {
             this.setState({ selected: nextProps.vault.get('lastAdded') });
+        } else if (this.props.vault.get('entries').keySeq().size > nextProps.vault.get('entries').keySeq().size) {
+            this.setState({ selected: Vault.newEntryTitle });
         }
     }
 

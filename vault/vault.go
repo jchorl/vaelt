@@ -66,6 +66,34 @@ func GetAllHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, entries)
 }
 
+// DeleteByTitleHandler deletes all entries with a given title
+func DeleteByTitleHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	query := datastore.NewQuery(entryEntityType).
+		Filter("Title =", c.Param("title")).
+		Ancestor(userKey).
+		KeysOnly()
+	keys, err := query.GetAll(ctx, nil)
+	if err != nil {
+		log.Errorf(ctx, "Unable to get keys by title to delete: %+v", err)
+		return err
+	}
+
+	err = datastore.DeleteMulti(ctx, keys)
+	if err != nil {
+		log.Errorf(ctx, "Unable to delete by title: %+v", err)
+		return err
+	}
+
+	return c.String(http.StatusOK, c.Param("title"))
+}
+
 func put(ctx context.Context, entries []Entry, userKey *datastore.Key) ([]*datastore.Key, error) {
 	// make sure the titles are all the same
 	if len(entries) == 0 {

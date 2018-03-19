@@ -183,6 +183,51 @@ function fetchArmoredKeyByURL(keyID, url) {
     }
 }
 
+export const DELETE_BY_TITLE_REQUEST = 'DELETE_BY_TITLE_REQUEST';
+function deleteByTitleRequest(taskID) {
+    return {
+        type: DELETE_BY_TITLE_REQUEST,
+        taskID,
+    }
+}
+
+export const DELETE_BY_TITLE_SUCCESS = 'DELETE_BY_TITLE_SUCCESS';
+function deleteByTitleSuccess(taskID, title) {
+    return {
+        type: DELETE_BY_TITLE_SUCCESS,
+        title,
+        taskID,
+        receivedAt: Date.now(),
+    }
+}
+
+export const DELETE_BY_TITLE_FAILURE = 'DELETE_BY_TITLE_FAILURE';
+function deleteByTitleFailure(taskID, error) {
+    return {
+        type: DELETE_BY_TITLE_FAILURE,
+        taskID,
+        error,
+    }
+}
+
+export function deleteByTitle(taskID, title) {
+    return function(dispatch) {
+        dispatch(deleteByTitleRequest(taskID));
+
+        let headers = new Headers();
+        headers.append('Accept', 'text/plain');
+        return fetch(`/api/vault/${title}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: headers,
+        })
+            .then(
+                stringResponse(dispatch, deleteByTitleSuccess.bind(undefined, taskID), deleteByTitleFailure.bind(undefined, taskID)),
+                reqFailure(dispatch, deleteByTitleFailure.bind(undefined, taskID))
+            );
+    };
+}
+
 export const DECRYPTION_SUCCESS = 'DECRYPTION_SUCCESS';
 function decryptionSuccess(taskID) {
     // do not pass on decrypted value

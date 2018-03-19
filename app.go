@@ -27,6 +27,7 @@ func init() {
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)
 	vaultGroup.GET("", vault.GetAllHandler, auth.AuthReadMiddlewares...)
+	vaultGroup.DELETE("/:title", vault.DeleteByTitleHandler, auth.AuthWriteMiddlewares...)
 
 	u2fGroup := e.Group("/api/u2f")
 	u2fGroup.GET("/register", u2f.RegisterRequest, auth.AuthWriteMiddlewares...)

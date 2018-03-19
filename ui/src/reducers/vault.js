@@ -10,6 +10,9 @@ import {
     DECRYPTION_SUCCESS,
     DECRYPTION_FAILURE,
     YUBIKEY_TAP_REQUIRED,
+    DELETE_BY_TITLE_REQUEST,
+    DELETE_BY_TITLE_SUCCESS,
+    DELETE_BY_TITLE_FAILURE,
 } from '../actions/vault';
 import {
     REVOKE_KEY_SUCCESS,
@@ -58,6 +61,15 @@ export default function vault(state = defaultState, action) {
                 .toList()
                 .groupBy(e => e.get('title'))
             );
+        case DELETE_BY_TITLE_SUCCESS:
+            return state
+                .deleteIn(['entries', action.title])
+                .delete(action.taskID)
+                .deleteIn(['titleToKeys', action.title]);
+        case DELETE_BY_TITLE_REQUEST:
+            return state.set(action.taskID, Map());
+        case DELETE_BY_TITLE_FAILURE:
+            return state.setIn([action.taskID, 'error'], action.error);
         case YUBIKEY_TAP_REQUIRED:
             return state.setIn([action.taskID, 'yubikeyTapRequired'], true);
         case FETCH_VAULT_ALL_FAILURE:

@@ -53,6 +53,12 @@ button.danger {
   border: 2px solid rgba(0, 0, 0, 0);
 }
 
+button.danger.filled {
+  color: white;
+  border: 2px solid var(--red);
+  background-color: var(--red);
+}
+
 button.nobackground {
   border: 2px solid rgba(0, 0, 0, 0);
 }

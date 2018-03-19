@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import VaultEntryDecrypt from './vaultEntryDecrypt';
+import VaultEntryDelete from './vaultEntryDelete';
 import VaultEntryUpdate from './vaultEntryUpdate';
 import VaultEntryPreviousVersions from './vaultEntryPreviousVersions';
 import HelpPopup from '../HelpPopup';
@@ -29,6 +30,10 @@ export default class Entry extends Component {
                     <div className="section">
                         <div>Previous Versions</div>
                         <VaultEntryPreviousVersions title={ title } />
+                    </div>
+                    <div className="section">
+                        <div>Delete</div>
+                        <VaultEntryDelete title={ title } />
                     </div>
                 </div>
             </div>
