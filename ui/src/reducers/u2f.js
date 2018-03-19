@@ -17,6 +17,7 @@ import {
     FETCH_SIGN_FINISH_REQUEST,
     FETCH_SIGN_FINISH_SUCCESS,
     FETCH_SIGN_FINISH_FAILURE,
+    REQUIRE_U2F_FAILURE,
 } from '../actions/u2f';
 import { FETCH_LOGOUT_SUCCESS } from '../actions/user';
 
@@ -109,6 +110,8 @@ function registrations(state = defaultRegistrationsState, action) {
             return state.update('registrations', registrations => registrations.filter(r => r.get('id') !== action.id));
         case FETCH_DELETE_REGISTRATION_FAILURE:
             return defaultState.set('error', action.error);
+        case REQUIRE_U2F_FAILURE:
+            return state.set('error', action.error);
         default:
             return state
     }

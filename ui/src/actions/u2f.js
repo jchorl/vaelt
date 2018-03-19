@@ -258,3 +258,47 @@ export function deleteRegistration(id) {
             );
     };
 }
+
+export const REQUIRE_U2F_REQUEST = 'REQUIRE_U2F_REQUEST';
+function requireU2FRequest() {
+    return {
+        type: REQUIRE_U2F_REQUEST,
+    }
+}
+
+export const REQUIRE_U2F_SUCCESS = 'REQUIRE_U2F_SUCCESS';
+function requireU2FSuccess(user) {
+    return {
+        type: REQUIRE_U2F_SUCCESS,
+        user,
+        receivedAt: Date.now(),
+    }
+}
+
+export const REQUIRE_U2F_FAILURE = 'REQUIRE_U2F_FAILURE';
+function requireU2FFailure(error) {
+    return {
+        type: REQUIRE_U2F_FAILURE,
+        error,
+    }
+}
+
+export function requireU2F(required) {
+    return function(dispatch) {
+        dispatch(requireU2FRequest());
+
+        let headers = new Headers();
+        headers.append('Content-Type', 'application/json');
+        headers.append('Accept', 'application/json');
+        fetch(`/api/u2f/required`, {
+            credentials: 'same-origin',
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ u2fEnforced: required }),
+        })
+            .then(
+                jsonResponse(dispatch, requireU2FSuccess, requireU2FFailure),
+                reqFailure(dispatch, requireU2FFailure)
+            );
+    };
+}

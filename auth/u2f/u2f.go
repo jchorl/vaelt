@@ -35,13 +35,18 @@ type Registration struct {
 	CreatedAt       time.Time      `json:"createdAt"`
 }
 
+type u2fRequiredRequest struct {
+	U2fEnforced bool `json:"u2fEnforced"`
+}
+
 const (
 	challengeEntityType    = "u2fChallenge"
 	registrationEntityType = "u2fRegistration"
 	counterEntityType      = "u2fCounter"
 )
 
-func RegisterRequest(c echo.Context) error {
+// RegisterRequestHandler handles u2f registration requests
+func RegisterRequestHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 	challenge, err := u2f.NewChallenge(config.ApplicationID, []string{config.ApplicationID})
 	if err != nil {
@@ -69,7 +74,8 @@ func RegisterRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, req)
 }
 
-func RegisterResponse(c echo.Context) error {
+// RegisterResponseHandler handles responses to registration requests
+func RegisterResponseHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	var regResp u2f.RegisterResponse
@@ -126,7 +132,8 @@ func RegisterResponse(c echo.Context) error {
 	return c.JSON(http.StatusOK, reg)
 }
 
-func SignRequest(c echo.Context) error {
+// SignRequestHandler hands out a request to sign
+func SignRequestHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	userKey, ok := sessions.GetUserKeyFromContext(c)
@@ -159,7 +166,8 @@ func SignRequest(c echo.Context) error {
 	return c.JSON(http.StatusOK, req)
 }
 
-func SignResponse(c echo.Context) error {
+// SignResponseHandler handles the response to a sign request
+func SignResponseHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	var signResp u2f.SignResponse
@@ -214,8 +222,8 @@ func SignResponse(c echo.Context) error {
 	return err
 }
 
-// GetRegistrations gets all of a users registrations
-func GetRegistrations(c echo.Context) error {
+// GetRegistrationsHandler gets all of a users registrations
+func GetRegistrationsHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	userKey, ok := sessions.GetUserKeyFromContext(c)
@@ -232,8 +240,8 @@ func GetRegistrations(c echo.Context) error {
 	return c.JSON(http.StatusOK, registrations)
 }
 
-// DeleteRegistration deletes a registration
-func DeleteRegistration(c echo.Context) error {
+// DeleteRegistrationHandler deletes a registration
+func DeleteRegistrationHandler(c echo.Context) error {
 	ctx := appengine.NewContext(c.Request())
 
 	userKey, ok := sessions.GetUserKeyFromContext(c)
@@ -276,6 +284,46 @@ func DeleteRegistration(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, c.Param("id"))
+}
+
+// EnableDisableHandler handles enabling and disabling u2f
+func EnableDisableHandler(c echo.Context) error {
+	ctx := appengine.NewContext(c.Request())
+
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Unable to get userKey when getting registrations")
+	}
+
+	req := u2fRequiredRequest{}
+	err := c.Bind(&req)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Unable to parse request body")
+	}
+
+	// if they dont have any registrations, dont let them enable u2f
+	// so the user doesnt get permanently locked out
+	if req.U2fEnforced {
+		numRegistrations, err := NumRegistrations(c)
+		if err != nil {
+			return err
+		}
+		if numRegistrations == 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "Cannot require U2F when there are no registrations! You will get permanently locked out of your account.")
+		}
+	}
+
+	user, err := users.GetUserByKey(c, userKey)
+	if err != nil {
+		return err
+	}
+	user.U2fEnforced = req.U2fEnforced
+	_, err = users.Save(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, user)
 }
 
 // NumRegistrations returns the number of registrations that a user has

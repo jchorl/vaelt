@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
-import { deleteRegistration, fetchRegistrationsIfNeeded } from '../../actions/u2f';
+import { deleteRegistration, fetchRegistrationsIfNeeded, requireU2F } from '../../actions/u2f';
 import RegisterU2F from '../U2F/register';
 import './u2fRegistrations.css';
 
@@ -10,6 +10,7 @@ class U2fRegistrations extends Component {
     static propTypes = {
         deleteRegistration: PropTypes.func.isRequired,
         fetchRegistrationsIfNeeded: PropTypes.func.isRequired,
+        requireU2F: PropTypes.func.isRequired,
         registrations: ImmutablePropTypes.contains({
             registrations: ImmutablePropTypes.listOf(
                 ImmutablePropTypes.contains({
@@ -45,6 +46,15 @@ class U2fRegistrations extends Component {
         const target = event.target;
         const value = target.type === 'checkbox' ? target.checked : target.value;
         const name = target.name;
+
+        const { registrations, requireU2F } = this.props;
+
+        // if there are registrations, fire the req
+        // if there are no registrations, enabling will lock a user out of their account, and it should already be disabled
+        // so dont fire a req
+        if (name === 'u2fEnforced' && !registrations.get('registrations').isEmpty()) {
+            requireU2F(value);
+        }
 
         this.setState({
             [name]: value,
@@ -110,5 +120,6 @@ export default connect(
     dispatch => ({
         deleteRegistration: id => dispatch(deleteRegistration(id)),
         fetchRegistrationsIfNeeded: () => dispatch(fetchRegistrationsIfNeeded()),
+        requireU2F: required => dispatch(requireU2F(required)),
     }),
 )(U2fRegistrations);
