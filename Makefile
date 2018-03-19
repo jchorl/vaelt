@@ -19,6 +19,16 @@ devserve:
 		--net=host \
 		jchorl/gclouddev
 
+prettier:
+	docker container run --rm -it \
+		-v $(PWD)/ui:/usr/src/app \
+		-w /usr/src/app \
+		-u $(UID):$(GID) \
+		--net=host \
+		node \
+		sh -c "yarn install --dev \
+		&& ./node_modules/.bin/prettier --write \"src/**/*.js\""
+
 ui-dev:
 	docker container run --rm -it \
 		-v $(PWD)/ui:/usr/src/app \
