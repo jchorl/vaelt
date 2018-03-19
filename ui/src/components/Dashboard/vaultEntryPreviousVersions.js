@@ -51,6 +51,7 @@ class PreviousVersions extends Component {
 
         return (
             <div className="vaultEntryPreviousVersions greyContainer">
+                { versions.isEmpty() ? <div>None</div> : null }
                 { versions.map(v => (
                 <div key={ v }>
                     <div onClick={ this.toggle(v) } className="version">
