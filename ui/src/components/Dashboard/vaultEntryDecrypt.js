@@ -100,6 +100,12 @@ class Decrypt extends Component {
         }
     }
 
+    componentWillUnmount() {
+        if (!!this.hideTimeout) {
+            clearTimeout(this.hideTimeout);
+        }
+    }
+
     transitionTo = state => extraState => {
         const newState = { state, ...extraState };
         if (state === NONE) {
@@ -167,7 +173,7 @@ class Decrypt extends Component {
         try {
             const decrypted = await decrypt(key, ciphertext, secret, this.id);
             this.transitionTo(DECRYPTED)({ decrypted });
-            setTimeout(this.transitionTo(NONE), 30 * 1000);
+            this.hideTimeout = setTimeout(this.transitionTo(NONE), 30 * 1000);
         } catch (e) {
             // this should have been handled already in the action creator
         }
