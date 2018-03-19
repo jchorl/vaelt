@@ -49,7 +49,6 @@ class LoginRegister extends Component {
         this.setState({ isRegister: true });
     }
 
-    // TODO vertically venter welcome back
     render() {
         const { isRegister } = this.state;
         const { user } = this.props;
