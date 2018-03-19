@@ -109,7 +109,7 @@ func GetPasswordPrivateKeyHandler(c echo.Context) error {
 		return errors.New("Could not get user key from context")
 	}
 
-	passwordKey, err := getPasswordPrivateKey(ctx, userKey)
+	passwordKey, err := getPasswordPrivateKey(ctx, c.Param("name"), userKey)
 	if err != nil {
 		return err
 	}
@@ -125,42 +125,34 @@ func PostHandler(c echo.Context) error {
 		return errors.New("Could not get user key from context")
 	}
 
-	key := new(Key)
-	err := c.Bind(key)
+	keys := []Key{}
+	err := c.Bind(&keys)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Could not parse the request body")
 	}
 
-	// make sure only one of url, armoredKey is filled
-	if (key.ArmoredKey != "" && key.URL != "") || (key.ArmoredKey == "" && key.URL == "") {
-		return echo.NewHTTPError(http.StatusBadRequest, "Only one of armoredKey and url should be provided")
-	}
-
-	// make sure the armored key is valid
-	if key.ArmoredKey != "" {
-		_, err := armor.Decode(strings.NewReader(key.ArmoredKey))
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "The provided armored key is not valid")
-		}
-	}
-
-	// make sure the entry is not a duplicate
+	// fetch all keys to make sure the entry is not a duplicate
 	allKeys, err := getAll(ctx, userKey)
 	if err != nil {
 		return err
 	}
-	for _, k := range allKeys {
-		if (k.URL != "" && k.URL == key.URL) || (k.ArmoredKey != "" && k.ArmoredKey == key.ArmoredKey) {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Key is identical to existing key (%s)", k.Name))
+
+	for _, key := range keys {
+		// make sure the entry is not a duplicate
+		// this is not performant but it shouldnt matter
+		for _, k := range allKeys {
+			if (k.URL != "" && k.URL == key.URL) || (k.ArmoredKey != "" && k.ArmoredKey == key.ArmoredKey) {
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Key is identical to existing key (%s)", k.Name))
+			}
 		}
 	}
 
-	err = Put(ctx, key, userKey)
+	err = Put(ctx, keys, userKey)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, key)
+	return c.JSON(http.StatusCreated, keys)
 }
 
 // RevokeHandler revokes a key, deleting all vault entries encrypted with that key
@@ -219,26 +211,41 @@ func ProxyHandler(c echo.Context) error {
 	return c.Stream(resp.StatusCode, contentType, resp.Body)
 }
 
-// Put saves a key
-func Put(ctx context.Context, key *Key, userKey *datastore.Key) error {
-	if key.URL == "" && key.ArmoredKey == "" {
-		return errors.New("One of URL and ArmoredKey must be provided")
+// Put saves keys
+func Put(ctx context.Context, keys []Key, userKey *datastore.Key) error {
+	keyKeys := []*datastore.Key{}
+	for idx, key := range keys {
+		// make sure only one of url, armoredKey is filled
+		if (key.ArmoredKey != "" && key.URL != "") || (key.ArmoredKey == "" && key.URL == "") {
+			return echo.NewHTTPError(http.StatusBadRequest, "Only one of armoredKey and url should be provided")
+		}
+
+		// make sure the armored key is valid
+		if key.ArmoredKey != "" {
+			_, err := armor.Decode(strings.NewReader(key.ArmoredKey))
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, "The provided armored key is not valid")
+			}
+		}
+
+		if key.Type != public && key.Type != private {
+			return errors.New("Key type must be private or public")
+		}
+
+		keys[idx].CreatedAt = time.Now()
+		keyKeys = append(keyKeys, datastore.NewIncompleteKey(ctx, keyEntityType, userKey))
 	}
 
-	if key.Type != public && key.Type != private {
-		return errors.New("Key type must be private or public")
-	}
-
-	key.CreatedAt = time.Now()
-
-	k := datastore.NewIncompleteKey(ctx, keyEntityType, userKey)
-	k, err := datastore.Put(ctx, k, key)
+	var err error
+	keyKeys, err = datastore.PutMulti(ctx, keyKeys, keys)
 	if err != nil {
 		log.Errorf(ctx, "Error putting to keystore: %+v", err)
 		return err
 	}
 
-	key.ID = k
+	for idx := range keys {
+		keys[idx].ID = keyKeys[idx]
+	}
 
 	return nil
 }
@@ -282,11 +289,11 @@ func getByKeys(ctx context.Context, keyKeys []*datastore.Key, userKey *datastore
 	return keys, nil
 }
 
-func getPasswordPrivateKey(ctx context.Context, userKey *datastore.Key) (Key, error) {
+func getPasswordPrivateKey(ctx context.Context, keyName string, userKey *datastore.Key) (Key, error) {
 	var keys []Key
 	query := datastore.NewQuery(keyEntityType).
 		Filter("Type =", "private").
-		Filter("Name =", "Password").
+		Filter("Name =", keyName).
 		Filter("Device =", "password").
 		Ancestor(userKey)
 	ks, err := query.GetAll(ctx, &keys)

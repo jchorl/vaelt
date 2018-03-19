@@ -54,10 +54,10 @@ function requestKeyPost() {
 }
 
 export const KEY_POST_SUCCESS = "KEY_POST_SUCCESS";
-function keyPostSuccess(key) {
+function keyPostSuccess(keys) {
   return {
     type: KEY_POST_SUCCESS,
-    key,
+    keys,
     receivedAt: Date.now(),
   };
 }
@@ -70,7 +70,7 @@ function keyPostFailure(error) {
   };
 }
 
-export function addKey(key) {
+export function addKeys(keys) {
   return function(dispatch) {
     dispatch(requestKeyPost());
 
@@ -79,7 +79,7 @@ export function addKey(key) {
     fetch("/api/keys", {
       credentials: "same-origin",
       method: "POST",
-      body: JSON.stringify(key),
+      body: JSON.stringify(keys),
       headers,
     }).then(
       jsonResponse(dispatch, keyPostSuccess, keyPostFailure),
@@ -221,11 +221,11 @@ export function fetchKeyByID(id) {
   };
 }
 
-export function fetchPasswordPrivateKey() {
+export function fetchPasswordPrivateKey(name) {
   return function(dispatch) {
     let headers = new Headers();
     headers.append("Accept", "application/json");
-    return fetch("/api/keys/password", {
+    return fetch(`/api/keys/password/${name}`, {
       method: "GET",
       credentials: "same-origin",
       headers: headers,

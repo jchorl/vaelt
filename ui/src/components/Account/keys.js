@@ -2,13 +2,15 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ImmutablePropTypes from "react-immutable-proptypes";
+import { generateKeyPair } from "../../crypto";
 import {
-  addKey,
+  addKeys,
   fetchKeysIfNeeded,
   fetchKeyByID,
   revokeKey,
 } from "../../actions/keys";
 import { getPublicKey } from "../../yubikey";
+import HelpPopup from "../HelpPopup";
 import ConfirmationDialog from "../ConfirmationDialog";
 import "./keys.css";
 
@@ -16,13 +18,15 @@ const NONE = Symbol("NONE");
 const ADD_FROM_YUBIKEY = Symbol("ADD_FROM_YUBIKEY");
 const ADD_FROM_URL = Symbol("ADD_FROM_URL");
 const ADD_FROM_KEY = Symbol("ADD_FROM_KEY");
+const ADD_NEW_PASSWORD = Symbol("ADD_NEW_PASSWORD");
 
 class Keys extends Component {
   static propTypes = {
-    addKey: PropTypes.func.isRequired,
+    addKeys: PropTypes.func.isRequired,
     fetchKeysIfNeeded: PropTypes.func.isRequired,
     fetchKeyByID: PropTypes.func.isRequired,
     revokeKey: PropTypes.func.isRequired,
+    email: PropTypes.string,
     keys: ImmutablePropTypes.contains({
       keys: ImmutablePropTypes.listOf(
         ImmutablePropTypes.contains({
@@ -46,6 +50,7 @@ class Keys extends Component {
       url: "",
       armoredKey: "",
       showDialog: false,
+      password: "",
     };
   }
 
@@ -74,7 +79,7 @@ class Keys extends Component {
       type: "public",
       device: "yubikey",
     };
-    this.props.addKey(key);
+    this.props.addKeys([key]);
   };
 
   addFromURL = e => {
@@ -87,7 +92,7 @@ class Keys extends Component {
       type: "public",
       device: "unknown",
     };
-    this.props.addKey(key);
+    this.props.addKeys([key]);
   };
 
   addFromArmoredKey = e => {
@@ -100,7 +105,32 @@ class Keys extends Component {
       type: "public",
       device: "unknown",
     };
-    this.props.addKey(key);
+    this.props.addKeys([key]);
+  };
+
+  addNewPassword = async e => {
+    e.preventDefault();
+
+    const { name, password } = this.state;
+    const { email } = this.props;
+
+    // generate a keypair
+    const key = await generateKeyPair(email, password);
+    const keys = [
+      {
+        armoredKey: key.privateKeyArmored,
+        type: "private",
+        name,
+        device: "password",
+      },
+      {
+        armoredKey: key.publicKeyArmored,
+        type: "public",
+        name,
+        device: "password",
+      },
+    ];
+    this.props.addKeys(keys);
   };
 
   transitionTo = state => () => {
@@ -152,7 +182,15 @@ class Keys extends Component {
   };
 
   render() {
-    const { state, name, url, armoredKey, showDialog, idToRevoke } = this.state;
+    const {
+      state,
+      name,
+      url,
+      armoredKey,
+      showDialog,
+      idToRevoke,
+      password,
+    } = this.state;
     const { keys } = this.props;
     const allKeys = keys.get("keys");
 
@@ -173,6 +211,7 @@ class Keys extends Component {
     }
 
     // TODO encrypt all values with the new key if possible
+    // TODO add a help section specifying how to set up a yubikey
     return (
       <div className="keys">
         <h2>Keys</h2>
@@ -210,24 +249,32 @@ class Keys extends Component {
             ))}
           </div>
           {state === NONE ? (
-            <div>
+            <div className="addFromButtons">
               <button
                 className="purple"
                 onClick={this.transitionTo(ADD_FROM_YUBIKEY)}
               >
-                Add From Yubikey
+                Add From Yubikey{" "}
+                <HelpPopup message="See the Help section for properly configuring a Yubikey" />
               </button>
               <button
                 className="purple"
                 onClick={this.transitionTo(ADD_FROM_URL)}
               >
-                Add From URL
+                Add From URL{" "}
+                <HelpPopup message="The URL should be the URL to a public GPG key." />
               </button>
               <button
                 className="purple"
                 onClick={this.transitionTo(ADD_FROM_KEY)}
               >
                 Add From Armored Key
+              </button>
+              <button
+                className="purple"
+                onClick={this.transitionTo(ADD_NEW_PASSWORD)}
+              >
+                Add New Password
               </button>
             </div>
           ) : state === ADD_FROM_YUBIKEY ? (
@@ -334,6 +381,44 @@ class Keys extends Component {
                 </div>
               </form>
             </div>
+          ) : state === ADD_NEW_PASSWORD ? (
+            <div>
+              Add new password
+              <form className="namePasswordForm">
+                <div className="passwordForm">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Name"
+                    onChange={this.handleInputChange}
+                    value={name}
+                  />
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Password..."
+                    onChange={this.handleInputChange}
+                    value={password}
+                  />
+                </div>
+                <div className="passwordFormButtons">
+                  <button
+                    type="button"
+                    className="nobackground"
+                    onClick={this.transitionTo(NONE)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="purple"
+                    onClick={this.addNewPassword}
+                  >
+                    Add
+                  </button>
+                </div>
+              </form>
+            </div>
           ) : null}
           {keys.has("error") ? (
             <div className="errorText">{keys.getIn(["error", "message"])}</div>
@@ -353,11 +438,14 @@ class Keys extends Component {
 }
 
 export default connect(
-  state => ({ keys: state.keys }),
+  state => ({
+    keys: state.keys,
+    email: state.user.getIn(["user", "email"]),
+  }),
   dispatch => ({
     fetchKeysIfNeeded: () => dispatch(fetchKeysIfNeeded()),
     fetchKeyByID: id => dispatch(fetchKeyByID(id)),
-    addKey: key => dispatch(addKey(key)),
+    addKeys: keys => dispatch(addKeys(keys)),
     revokeKey: id => dispatch(revokeKey(id)),
   })
 )(Keys);

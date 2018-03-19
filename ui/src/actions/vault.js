@@ -275,7 +275,9 @@ export function decrypt(key, ciphertext, secret, taskID) {
       switch (key.get("device")) {
         case "password": {
           // fetch the private key
-          const privateKey = await dispatch(fetchPasswordPrivateKey());
+          const privateKey = await dispatch(
+            fetchPasswordPrivateKey(key.get("name"))
+          );
           const decrypted = await decryptUsingPrivateKey(
             ciphertext,
             privateKey.get("armoredKey"),

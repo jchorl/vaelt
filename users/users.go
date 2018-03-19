@@ -82,11 +82,9 @@ func RegisterHandler(c echo.Context) error {
 	}
 
 	// save the keypair
-	for _, key := range keyPair {
-		err = keystore.Put(ctx, &key, userKey)
-		if err != nil {
-			return err
-		}
+	err = keystore.Put(ctx, keyPair, userKey)
+	if err != nil {
+		return err
 	}
 
 	// request a verification email

@@ -22,6 +22,19 @@ export default function keys(state = defaultState, action) {
       return defaultState;
     case FETCH_KEYS_REQUEST:
       return state.set("isFetching", true);
+    case KEY_POST_SUCCESS:
+      return state.delete("error").update("keys", keys =>
+        keys
+          .concat(
+            action.keys.map(k => {
+              if (k.get("type") === "private") {
+                k = k.set("armoredKey", "");
+              }
+              return k.update("createdAt", c => new Date(c));
+            })
+          )
+          .sort((k1, k2) => k1.get("createdAt") < k2.get("createdAt"))
+      );
     case FETCH_KEYS_SUCCESS:
       return Map({
         // strip out the private armored keys so they dont get stored
@@ -39,17 +52,6 @@ export default function keys(state = defaultState, action) {
     case FETCH_KEY_BY_ID_FAILURE:
     case FETCH_KEYS_FAILURE:
       return defaultState.set("error", action.error);
-    case KEY_POST_SUCCESS:
-      return (
-        state
-          .update("keys", keys =>
-            keys
-              .push(action.key.update("createdAt", c => new Date(c)))
-              .sort((k1, k2) => k1.get("createdAt") < k2.get("createdAt"))
-          )
-          // clear the error
-          .delete("error")
-      );
     case KEY_POST_FAILURE:
     case REVOKE_KEY_FAILURE:
       return state.set("error", action.error);

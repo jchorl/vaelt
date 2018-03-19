@@ -32,17 +32,28 @@
   align-items: center;
 }
 
-.keys .nameUrlForm, .keys .nameKeyForm {
+.keys .nameUrlForm, .keys .nameKeyForm, .keys .namePasswordForm {
   display: flex;
   flex-direction: column;
 }
 
-.keys .urlForm, .keys .keyForm {
+.keys .urlForm, .keys .keyForm, .keys .passwordForm {
   display: flex;
   flex-direction: column;
 }
 
-.keys .urlFormButtons, .keys .keyFormButtons {
+.keys .urlFormButtons, .keys .keyFormButtons, .keys .passwordFormButtons {
   display: flex;
   justify-content: flex-end;
+}
+
+.keys .addFromButtons {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.keys .addFromButtons button {
+  margin: 5px;
+  flex-shrink: 0;
 }
