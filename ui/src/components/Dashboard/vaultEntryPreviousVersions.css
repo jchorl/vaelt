@@ -1,0 +1,15 @@
+.vaultEntryPreviousVersions .version {
+  cursor: pointer;
+}
+
+.vaultEntryPreviousVersions .triangle {
+  margin-right: 10px;
+  width: 10px;
+}
+
+.vaultEntryPreviousVersions .decrypt {
+  background: white;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+}

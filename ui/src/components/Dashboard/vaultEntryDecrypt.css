@@ -27,7 +27,7 @@
   display: flex;
 }
 
-.vaultEntryDecrypt #decryptedText {
+.vaultEntryDecrypt .decryptedText {
   background: white;
   min-width: 15em;
   min-height: 5em;

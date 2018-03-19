@@ -59,16 +59,16 @@ export default function vault(state = defaultState, action) {
                 .groupBy(e => e.get('title'))
             );
         case YUBIKEY_TAP_REQUIRED:
-            return state.set('yubikeyTapRequired', true);
+            return state.setIn([action.taskID, 'yubikeyTapRequired'], true);
         case FETCH_VAULT_ALL_FAILURE:
             return defaultState.set('error', action.error);
         case FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS:
             return state.setIn(['titleToKeys', action.title], action.keys);
         case DECRYPTION_SUCCESS:
-            return state.set('yubikeyTapRequired', false).delete('decryptionError');
+            return state.set(action.taskID, Map());
         case FETCH_PASSWORD_PRIVATE_KEY_FAILURE:
         case DECRYPTION_FAILURE:
-            return state.set('decryptionError', action.error);
+            return state.setIn([action.error.get('taskID'), 'error'], action.error);
         case FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE:
         case ADD_TO_VAULT_FAILURE:
             return state.set('error', action.error);

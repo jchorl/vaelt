@@ -184,10 +184,11 @@ function fetchArmoredKeyByURL(keyID, url) {
 }
 
 export const DECRYPTION_SUCCESS = 'DECRYPTION_SUCCESS';
-function decryptionSuccess() {
+function decryptionSuccess(taskID) {
     // do not pass on decrypted value
     return {
         type: DECRYPTION_SUCCESS,
+        taskID,
     }
 }
 
@@ -200,30 +201,27 @@ function decryptionFailure(error) {
 }
 
 export const YUBIKEY_TAP_REQUIRED = 'YUBIKEY_TAP_REQUIRED';
-function yubikeyTapRequired() {
+function yubikeyTapRequired(taskID) {
     return {
         type: YUBIKEY_TAP_REQUIRED,
+        taskID,
     }
 }
 
-export function decrypt(key, title, secret) {
+// decrypts ciphertext using key and secret
+// errors and other state messages are keyed by taskID
+export function decrypt(key, ciphertext, secret, taskID) {
     return async function(dispatch, getState) {
-        // get the armored ciphertext
-        const ciphertext = getState()
-            .vault
-            .getIn(['entries', title])
-            .find(e => e.get('key') === key.get('id'))
-            .get('encryptedMessage');
         switch (key.get('device')) {
             case 'password':
                 // fetch the private key
                 try {
                     const privateKey = await dispatch(fetchPasswordPrivateKey());
                     const decrypted = await decryptUsingPrivateKey(ciphertext, privateKey.get('armoredKey'), secret);
-                    dispatch(decryptionSuccess());
+                    dispatch(decryptionSuccess(taskID));
                     return decrypted;
                 } catch (e) {
-                    const m = Map({ message: e.message });
+                    const m = Map({ message: e.message, taskID });
                     dispatch(decryptionFailure(m));
                     return Promise.reject(m);
                 }
@@ -232,19 +230,19 @@ export function decrypt(key, title, secret) {
                     await initDecryption(secret, ciphertext);
 
                     // dispatch the tap required
-                    dispatch(yubikeyTapRequired());
+                    dispatch(yubikeyTapRequired(taskID));
 
                     const decryptionKey = await finishDecryption();
                     const decrypted = await decryptUsingSessionKey(ciphertext, decryptionKey, 'aes256');
-                    dispatch(decryptionSuccess());
+                    dispatch(decryptionSuccess(taskID));
                     return decrypted;
                 } catch (e) {
-                    const m = Map({ message: e.message });
+                    const m = Map({ message: e.message, taskID });
                     dispatch(decryptionFailure(m));
                     return Promise.reject(m);
                 }
             default:
-                const m = Map({ message: 'Only decryption by Yubikey or password is supported' });
+                const m = Map({ message: 'Only decryption by Yubikey or password is supported', taskID });
                 dispatch(decryptionFailure(m));
                 return Promise.reject(m);
         }

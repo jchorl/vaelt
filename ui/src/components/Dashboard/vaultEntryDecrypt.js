@@ -3,8 +3,10 @@ import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 import { List } from 'immutable';
+import classNames from 'classnames';
 import { fetchKeysForVaultEntryIfNeeded } from '../../actions/keys';
 import { decrypt } from '../../actions/vault';
+import { uuidv4 } from '../../crypto';
 import CircularTimer from '../CircularTimer';
 import './vaultEntryDecrypt.css';
 
@@ -38,11 +40,9 @@ class Decrypt extends Component {
                     }).isRequired,
                 ).isRequired,
             ).isRequired,
-            decryptionError: ImmutablePropTypes.contains({
-                message: PropTypes.string.isRequired,
-            }),
             yubikeyTapRequired: PropTypes.bool.isRequired,
         }).isRequired,
+        version: PropTypes.number,
     }
 
     constructor(props) {
@@ -62,6 +62,8 @@ class Decrypt extends Component {
             vault,
         } = this.props;
 
+        this.id = uuidv4();
+
         const keyKeys = vault.getIn(['entries', title])
             .map(e => e.get('key'))
             .toSet();
@@ -74,19 +76,25 @@ class Decrypt extends Component {
             nextProps.fetchKeysForVaultEntryIfNeeded(nextProps.title, keyKeys);
 
             this.transitionTo(NONE)();
+            return;
+        }
+
+        if (this.getVersion(this.props) !== this.getVersion(nextProps)) {
+            this.transitionTo(NONE)();
+            return;
         }
 
         if (
-            !this.props.vault.get('yubikeyTapRequired') &&
-            nextProps.vault.get('yubikeyTapRequired')
+            !this.props.vault.getIn([this.id, 'yubikeyTapRequired']) &&
+            nextProps.vault.getIn([this.id, 'yubikeyTapRequired'])
         ) {
             this.transitionTo(TAP_REQUIRED)();
             return;
         }
 
         if (
-            !this.props.vault.has('decryptionError') &&
-            nextProps.vault.has('decryptionError')
+            !this.props.vault.hasIn([this.id, 'error']) &&
+            nextProps.vault.hasIn([this.id, 'error'])
         ) {
             this.transitionTo(NONE);
         }
@@ -120,8 +128,10 @@ class Decrypt extends Component {
                 this.transitionTo(PIN_REQUIRED)({ key });
                 break;
             default:
+                const version = this.getVersion(this.props);
                 const ciphertext = vault
                     .getIn(['entries', title])
+                    .filter(e => e.get('version') === version)
                     .find(e => e.get('key') === id)
                     .get('encryptedMessage');
                 this.transitionTo(CIPHERTEXT)({ ciphertext });
@@ -131,7 +141,7 @@ class Decrypt extends Component {
     decrypt = async e => {
         e.preventDefault();
 
-        const { decrypt, title } = this.props;
+        const { decrypt, title, vault } = this.props;
         const { key, pin, password } = this.state;
 
         let secret;
@@ -147,8 +157,15 @@ class Decrypt extends Component {
                 return;
         }
 
+        const version = this.getVersion(this.props);
+        const ciphertext = vault
+            .getIn(['entries', title])
+            .filter(e => e.get('version') === version)
+            .find(e => e.get('key') === key.get('id'))
+            .get('encryptedMessage');
+
         try {
-            const decrypted = await decrypt(key, title, secret);
+            const decrypted = await decrypt(key, ciphertext, secret, this.id);
             this.transitionTo(DECRYPTED)({ decrypted });
             setTimeout(this.transitionTo(NONE), 30 * 1000);
         } catch (e) {
@@ -168,13 +185,11 @@ class Decrypt extends Component {
 
     copy = elementId => () => {
         let copyText;
-        let copyTextarea;
-        if (elementId === 'decryptedText') {
+        let copyTextarea = document.getElementById(elementId);
+        if (!!this.state.decrypted) {
             copyText = this.state.decrypted;
-            copyTextarea = document.getElementById('decryptedText');
         } else {
             copyText = this.state.ciphertext;
-            copyTextarea = document.getElementById('ciphertextText');
         }
 
         if (!!navigator.clipboard) {
@@ -207,13 +222,22 @@ class Decrypt extends Component {
         }
     }
 
+    getVersion = props => {
+        let { vault, title, version } = props;
+
+        if (!!version) {
+            return version;
+        }
+
+        return Math.max(...vault.getIn(['entries', title]).map(e => e.get('version')).toJS());
+    }
+
     getEncryptingKeys = () => {
         const { vault, title } = this.props;
+        const version = this.getVersion(this.props);
 
-        // get the encrypting keys, but only for the latest version
-        const currVersion = Math.max(...vault.getIn(['entries', title]).map(e => e.get('version')).toJS());
         const keyIDs = vault.getIn(['entries', title])
-            .filter(e => e.get('version') === currVersion)
+            .filter(e => e.get('version') === version)
             .map(e => e.get('key'))
             .toSet();
         const encryptingKeys = vault.getIn(['titleToKeys', title], List()).filter(k => keyIDs.contains(k.get('id')));
@@ -231,12 +255,13 @@ class Decrypt extends Component {
             copySuccess,
             copyFailed,
         } = this.state;
-        const { vault } = this.props;
+        const { vault, version } = this.props;
 
         const encryptingKeys = this.getEncryptingKeys();
 
         return (
-            <div className="greyContainer vaultEntryDecrypt">
+            // if there is a version, dont put the greyContainer
+            <div className={ classNames('vaultEntryDecrypt', { greyContainer: !version }) }>
                 {
                 state === NONE
                 ? (
@@ -252,8 +277,8 @@ class Decrypt extends Component {
                 ? (
                 <div className="decryptedContainer">
                     <div className="decrypted">
-                        <textarea id="decryptedText" value={ decrypted } disabled />
-                        <button className="nobackground copyButton" onClick={ this.copy('decryptedText') }>
+                        <textarea id={ this.id } className="decryptedText" value={ decrypted } disabled />
+                        <button className="nobackground copyButton" onClick={ this.copy(this.id) }>
                             {
                             copySuccess
                             ? <i className="fa fa-check-circle"></i>
@@ -323,8 +348,8 @@ class Decrypt extends Component {
                 : null
                 }
                 {
-                vault.has('decryptionError')
-                ? <div className="errorText">{ vault.getIn(['decryptionError', 'message']) }</div>
+                vault.hasIn([this.id, 'error'])
+                ? <div className="errorText">{ vault.getIn([this.id, 'error', 'message']) }</div>
                 : null
                 }
             </div>
@@ -335,7 +360,7 @@ class Decrypt extends Component {
 export default connect(
     state => ({ vault: state.vault }),
     dispatch => ({
-        decrypt: (key, title, secret) => dispatch(decrypt(key, title, secret)),
+        decrypt: (key, ciphertext, secret, id) => dispatch(decrypt(key, ciphertext, secret, id)),
         fetchKeysForVaultEntryIfNeeded: (title, keyKeys) => dispatch(fetchKeysForVaultEntryIfNeeded(title, keyKeys)),
     })
 )(Decrypt);

@@ -43,6 +43,7 @@ class VaultEntryUpdate extends Component {
         const { secret } = this.state;
         this.props.addToVault(title, secret)
             .then(() => {
+                // need to fetch the keys so the decryption ui will be updated
                 const {
                     title,
                     fetchKeysForVaultEntry,
@@ -52,7 +53,12 @@ class VaultEntryUpdate extends Component {
                 const keyKeys = vault.getIn(['entries', title])
                     .map(e => e.get('key'))
                     .toSet();
-                fetchKeysForVaultEntry(title, keyKeys);
+                return fetchKeysForVaultEntry(title, keyKeys);
+            })
+            .then(() => {
+                this.setState({
+                    secret: '',
+                });
             });
     }
 
