@@ -64,7 +64,6 @@ func GetAllHandler(c echo.Context) error {
 	}
 
 	if len(keyKeys) == 0 {
-		// create err to not overwrite keys
 		keys, err = getAll(ctx, userKey)
 		if err != nil {
 			return err
@@ -245,7 +244,7 @@ func Put(ctx context.Context, key *Key, userKey *datastore.Key) error {
 }
 
 func getAll(ctx context.Context, userKey *datastore.Key) ([]Key, error) {
-	var keys []Key
+	keys := []Key{}
 	query := datastore.NewQuery(keyEntityType).
 		Ancestor(userKey)
 	ks, err := query.GetAll(ctx, &keys)
