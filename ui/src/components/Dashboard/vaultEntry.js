@@ -21,7 +21,7 @@ export default class Entry extends Component {
           <h2>{title}</h2>
           <div className="section">
             <div>Decrypt</div>
-            <VaultEntryDecrypt title={title} />
+            <VaultEntryDecrypt key={title} title={title} />
           </div>
           <div className="section">
             <div>
@@ -31,7 +31,7 @@ export default class Entry extends Component {
           </div>
           <div className="section">
             <div>Previous Versions</div>
-            <VaultEntryPreviousVersions title={title} />
+            <VaultEntryPreviousVersions key={title} title={title} />
           </div>
           <div className="section">
             <div>Delete</div>
