@@ -1,10 +1,10 @@
-.vaultEntryDecrypt .secretForm {
+.masterDecrypter .secretForm {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.vaultEntryDecrypt .tapRequired {
+.masterDecrypter .tapRequired {
   --timer-background: var(--light-grey);
   --duration: 10s;
   display: flex;
@@ -12,9 +12,8 @@
   align-items: flex-start;
 }
 
-.vaultEntryDecrypt .textAndTimer {
+.masterDecrypter .textAndTimer {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-

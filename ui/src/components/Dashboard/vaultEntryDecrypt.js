@@ -47,7 +47,7 @@ class Decrypt extends Component {
 
   setPlaintexts = plaintexts => {
     // there should only be one entry
-    this.transitionTo(DECRYPTED)({ decrypted: plaintexts[0] });
+    this.transitionTo(DECRYPTED)({ decrypted: plaintexts.get(0) });
     this.hideTimeout = setTimeout(this.transitionTo(NONE), 30 * 1000);
   };
 
@@ -144,6 +144,7 @@ class Decrypt extends Component {
 
     const { hideContainer } = this.props;
 
+    // TODO fix issue of switching between entries
     return (
       <div
         className={classNames("vaultEntryDecrypt", {

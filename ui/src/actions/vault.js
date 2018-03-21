@@ -1,4 +1,4 @@
-import { Map } from "immutable";
+import { List, Map } from "immutable";
 import { jsonResponse, stringResponse, reqFailure } from "./parseResponse";
 import { fetchKeysIfNeeded } from "./keys";
 import { encrypt } from "../crypto";
@@ -90,6 +90,7 @@ function updateVaultFailure(error) {
   };
 }
 
+// TODO make this support batching
 export function addToVault(title, secret, isUpdate) {
   return async function(dispatch, getState) {
     dispatch(addToVaultRequest());
@@ -163,6 +164,72 @@ export function addToVault(title, secret, isUpdate) {
       body: JSON.stringify(entries),
     }).then(
       jsonResponse(dispatch, successHandler, failureHandler),
+      reqFailure(dispatch, failureHandler)
+    );
+  };
+}
+
+export const REENCRYPTION_FAILURE = "REENCRYPTION_FAILURE";
+function reencryptionFailure(error) {
+  return {
+    type: REENCRYPTION_FAILURE,
+    error,
+  };
+}
+
+// TODO merge with above function
+export function addToVault2(secrets, oldEntries, key) {
+  return async function(dispatch) {
+    const failureHandler = reencryptionFailure;
+
+    let armoredKey = key.get("armoredKey");
+    let newEntries;
+    console.log("calling addToVault2");
+    try {
+      if (!!key.get("url")) {
+        armoredKey = await dispatch(
+          fetchArmoredKeyByURL(key.get("id"), key.get("url"))
+        );
+      }
+      newEntries = List(
+        await Promise.all(
+          secrets.map(secret => encrypt(secret, key.get("id"), armoredKey))
+        )
+      );
+    } catch (err) {
+      // give meaningful error when keys are invalid
+      // TODO const name = publicKeys
+      //   .find(k => k.get("id") === err.get("key"))
+      //   .get("name");
+      const name = key.get("name");
+      const m = err.update(
+        "message",
+        message =>
+          `Failed to encrypt using key "${name}". Consider checking that the key is valid. Error message: ${message}`
+      );
+      dispatch(failureHandler(m));
+      throw m;
+    }
+
+    newEntries = newEntries
+      .zip(oldEntries)
+      .map(([newEntry, oldEntry]) =>
+        newEntry
+          .set("title", oldEntry.get("title"))
+          .set("version", oldEntry.get("version"))
+      );
+
+    // post the new ciphertexts
+    let headers = new Headers();
+    headers.append("Accept", "application/json");
+    headers.append("Content-Type", "application/json");
+    return fetch("/api/vault", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: headers,
+      body: JSON.stringify(newEntries),
+    }).then(
+      jsonResponse(dispatch, addToVaultSuccess, failureHandler),
       reqFailure(dispatch, failureHandler)
     );
   };

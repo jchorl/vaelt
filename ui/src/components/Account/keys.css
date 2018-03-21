@@ -55,5 +55,21 @@
 
 .keys .addFromButtons button {
   margin: 5px;
+  padding: 5px 10px;
   flex-shrink: 0;
+}
+
+.keys .promptForReencryption {
+  display: flex;
+  flex-direction: column;
+}
+
+.keys .promptForReencryptionButtons {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.keys .pleaseDecrypt {
+  margin-bottom: 10px;
 }

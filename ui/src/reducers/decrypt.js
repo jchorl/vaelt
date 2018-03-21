@@ -12,7 +12,13 @@ export default function decrypt(state = defaultState, action) {
     case DECRYPTION_REQUEST:
       return state.set(action.taskID, Map());
     case YUBIKEY_TAP_REQUIRED:
-      return state.setIn([action.taskID, "yubikeyTapRequired"], true);
+      return state.setIn(
+        [action.taskID, "yubikeyTap"],
+        Map({
+          required: true,
+          timestamp: Date.now(),
+        })
+      );
     case DECRYPTION_SUCCESS:
       return state.set(action.taskID, Map());
     case DECRYPTION_FAILURE:

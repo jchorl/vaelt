@@ -1,5 +1,6 @@
+import { List, Map } from "immutable";
 import { decryptUsingSessionKey, decryptUsingPrivateKey } from "../crypto";
-import { initDecryption, finishDecryption } from "../yubikey";
+import { selectDevice, initDecryption, finishDecryption } from "../yubikey";
 import { fetchPasswordPrivateKey } from "./keys";
 
 export const DECRYPTION_REQUEST = "DECRYPTION_REQUEST";
@@ -35,42 +36,54 @@ function yubikeyTapRequired(taskID) {
   };
 }
 
-// decrypts ciphertext using key and secret
+// decrypts multiple ciphertexts using key and secret
 // errors and other state messages are keyed by taskID
-export function decrypt(key, ciphertext, secret, taskID) {
+export function decrypt(key, ciphertexts, secret, taskID) {
   return async function(dispatch) {
     dispatch(decryptionRequest(taskID));
 
     try {
       switch (key.get("device")) {
         case "password": {
-          // TODO one fetch for all decrypts
-          // fetch the private key
           const privateKey = await dispatch(
             fetchPasswordPrivateKey(key.get("name"))
           );
-          const decrypted = await decryptUsingPrivateKey(
-            ciphertext,
-            privateKey.get("armoredKey"),
-            secret
+
+          const decrypteds = List(
+            await Promise.all(
+              ciphertexts.map(ciphertext =>
+                decryptUsingPrivateKey(
+                  ciphertext,
+                  privateKey.get("armoredKey"),
+                  secret
+                )
+              )
+            )
           );
           dispatch(decryptionSuccess(taskID));
-          return decrypted;
+          return decrypteds;
         }
         case "yubikey": {
-          await initDecryption(secret, ciphertext);
+          await selectDevice();
 
-          // dispatch the tap required
-          dispatch(yubikeyTapRequired(taskID));
+          let decrypteds = List();
+          for (let ciphertext of ciphertexts) {
+            await initDecryption(secret, ciphertext);
 
-          const decryptionKey = await finishDecryption();
-          const decrypted = await decryptUsingSessionKey(
-            ciphertext,
-            decryptionKey,
-            "aes256"
-          );
+            // dispatch the tap required
+            dispatch(yubikeyTapRequired(taskID));
+
+            const decryptionKey = await finishDecryption();
+            const decrypted = await decryptUsingSessionKey(
+              ciphertext,
+              decryptionKey,
+              "aes256"
+            );
+
+            decrypteds = decrypteds.push(decrypted);
+          }
           dispatch(decryptionSuccess(taskID));
-          return decrypted;
+          return decrypteds;
         }
         default: {
           const m = Map({

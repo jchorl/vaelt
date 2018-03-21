@@ -196,6 +196,17 @@ export function getPublicKey() {
   );
 }
 
+export async function selectDevice() {
+  return navigator.usb
+    .requestDevice({ filters: [{ vendorId: 0x1050 }] })
+    .then(selectedDevice => {
+      decryptionDevice = selectedDevice;
+      return decryptionDevice.open(); // Begin a session.
+    })
+    .then(() => decryptionDevice.selectConfiguration(1))
+    .then(() => decryptionDevice.claimInterface(2));
+}
+
 // initDecryption sends the pin and payload
 export async function initDecryption(pin, armoredCiphertext) {
   let ciphertext = message.readArmored(armoredCiphertext);
@@ -203,27 +214,17 @@ export async function initDecryption(pin, armoredCiphertext) {
   // the key id is in the ciphertext but does not get sent to the yubikey
   let ciphertextPackets = ciphertext.packets[0].write().slice(11);
   return (
-    navigator.usb
-      .requestDevice({ filters: [{ vendorId: 0x1050 }] })
-      .then(selectedDevice => {
-        decryptionDevice = selectedDevice;
-        return decryptionDevice.open(); // Begin a session.
-      })
-      .then(() => decryptionDevice.selectConfiguration(1))
-      .then(() => decryptionDevice.claimInterface(2))
-
-      // send an abort in case the last operation is still going on
-      .then(() =>
-        decryptionDevice.controlTransferOut(
-          {
-            requestType: "class",
-            recipient: "interface",
-            request: 0x01, // abort
-            value: 0x0200, // seq 2, slot 0
-            index: 0x0002, // interface 2
-          },
-          Uint8Array.from([])
-        )
+    // send an abort in case the last operation is still going on
+    decryptionDevice
+      .controlTransferOut(
+        {
+          requestType: "class",
+          recipient: "interface",
+          request: 0x01, // abort
+          value: 0x0200, // seq 2, slot 0
+          index: 0x0002, // interface 2
+        },
+        Uint8Array.from([])
       )
 
       // this is necessary for decoding

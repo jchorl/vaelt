@@ -9,7 +9,9 @@ import {
   fetchKeyByID,
   revokeKey,
 } from "../../actions/keys";
+import { fetchAllFromVaultIfNeeded, addToVault2 } from "../../actions/vault";
 import { getPublicKey } from "../../yubikey";
+import MasterDecrypter from "../MasterDecrypter";
 import HelpPopup from "../HelpPopup";
 import ConfirmationDialog from "../ConfirmationDialog";
 import "./keys.css";
@@ -19,6 +21,8 @@ const ADD_FROM_YUBIKEY = Symbol("ADD_FROM_YUBIKEY");
 const ADD_FROM_URL = Symbol("ADD_FROM_URL");
 const ADD_FROM_KEY = Symbol("ADD_FROM_KEY");
 const ADD_NEW_PASSWORD = Symbol("ADD_NEW_PASSWORD");
+const PROMPT_FOR_REENCRYPTION = Symbol("PROMPT_FOR_REENCRYPTION");
+const DECRYPT_ALL = Symbol("DECRYPT_ALL");
 
 class Keys extends Component {
   static propTypes = {
@@ -39,6 +43,13 @@ class Keys extends Component {
         message: PropTypes.string.isRequired,
       }),
     }).isRequired,
+    vaultEntries: ImmutablePropTypes.orderedMapOf(
+      ImmutablePropTypes.listOf(
+        ImmutablePropTypes.contains({
+          version: PropTypes.number.isRequired,
+        }).isRequired
+      ).isRequired
+    ).isRequired,
     u2fEnforced: PropTypes.bool,
   };
 
@@ -59,10 +70,8 @@ class Keys extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // add key success
+    // add key success (but also just the first key fetch)
     if (nextProps.keys.get("keys").size > this.props.keys.get("keys").size) {
-      this.transitionTo(NONE)();
-
       // reset name, url and armoredKey
       this.setState({ name: "", url: "", armoredKey: "" });
     }
@@ -79,7 +88,7 @@ class Keys extends Component {
       type: "public",
       device: "yubikey",
     };
-    this.props.addKeys([key]);
+    this.props.addKeys([key]).then(this.addKeySuccess);
   };
 
   addFromURL = e => {
@@ -92,7 +101,7 @@ class Keys extends Component {
       type: "public",
       device: "unknown",
     };
-    this.props.addKeys([key]);
+    this.props.addKeys([key]).then(this.addKeySuccess);
   };
 
   addFromArmoredKey = e => {
@@ -105,7 +114,7 @@ class Keys extends Component {
       type: "public",
       device: "unknown",
     };
-    this.props.addKeys([key]);
+    this.props.addKeys([key]).then(this.addKeySuccess);
   };
 
   addNewPassword = async e => {
@@ -130,11 +139,42 @@ class Keys extends Component {
         device: "password",
       },
     ];
-    this.props.addKeys(keys);
+    this.props.addKeys(keys).then(this.addKeySuccess);
+  };
+
+  addKeySuccess = resp => {
+    this.setState({
+      newKey: resp.keys.find(k => k.get("type") === "public"),
+      state: PROMPT_FOR_REENCRYPTION,
+    });
   };
 
   transitionTo = state => () => {
+    if (state === DECRYPT_ALL) {
+      this.props.fetchAllFromVaultIfNeeded();
+    }
     this.setState({ state });
+  };
+
+  getAllEntries = () => {
+    const { vaultEntries } = this.props;
+
+    // get the latest version for each title
+    const maxVersionByTitle = vaultEntries.map(entries =>
+      entries
+        .map(e => e.get("version"))
+        .reduce((reduction, value) => Math.max(reduction, value), 0)
+    );
+
+    return vaultEntries.map((entries, title) =>
+      entries.filter(e => e.get("version") === maxVersionByTitle.get(title))
+    );
+  };
+
+  setPlaintexts = (plaintexts, entries) => {
+    const { addToVault2 } = this.props;
+    const { newKey } = this.state;
+    addToVault2(plaintexts, entries, newKey).then(this.transitionTo(NONE));
   };
 
   revoke = id => () => {
@@ -210,7 +250,6 @@ class Keys extends Component {
       }
     }
 
-    // TODO encrypt all values with the new key if possible
     // TODO add a help section specifying how to set up a yubikey
     return (
       <div className="keys">
@@ -266,15 +305,15 @@ class Keys extends Component {
               </button>
               <button
                 className="purple"
-                onClick={this.transitionTo(ADD_FROM_KEY)}
-              >
-                Add From Armored Key
-              </button>
-              <button
-                className="purple"
                 onClick={this.transitionTo(ADD_NEW_PASSWORD)}
               >
                 Add New Password
+              </button>
+              <button
+                className="purple"
+                onClick={this.transitionTo(ADD_FROM_KEY)}
+              >
+                Add From Armored Key
               </button>
             </div>
           ) : state === ADD_FROM_YUBIKEY ? (
@@ -419,6 +458,36 @@ class Keys extends Component {
                 </div>
               </form>
             </div>
+          ) : state === PROMPT_FOR_REENCRYPTION ? (
+            <div className="promptForReencryption">
+              Would you like to encrypt all vault entries with the new key? You
+              will have to decrypt them all first.
+              <div className="promptForReencryptionButtons">
+                <button
+                  className="nobackground"
+                  onClick={this.transitionTo(NONE)}
+                >
+                  No
+                </button>
+                <button
+                  className="purple"
+                  onClick={this.transitionTo(DECRYPT_ALL)}
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          ) : state === DECRYPT_ALL ? (
+            <div>
+              <div className="pleaseDecrypt">
+                Please decrypt the entries before they can be re-encrypted:
+              </div>
+              <MasterDecrypter
+                entries={this.getAllEntries()}
+                ciphertextProhibited={true}
+                setPlaintexts={this.setPlaintexts}
+              />
+            </div>
           ) : null}
           {keys.has("error") ? (
             <div className="errorText">{keys.getIn(["error", "message"])}</div>
@@ -440,12 +509,16 @@ class Keys extends Component {
 export default connect(
   state => ({
     keys: state.keys,
+    vaultEntries: state.vault.get("entries"),
     email: state.user.getIn(["user", "email"]),
   }),
   dispatch => ({
+    fetchAllFromVaultIfNeeded: () => dispatch(fetchAllFromVaultIfNeeded()),
     fetchKeysIfNeeded: () => dispatch(fetchKeysIfNeeded()),
     fetchKeyByID: id => dispatch(fetchKeyByID(id)),
     addKeys: keys => dispatch(addKeys(keys)),
     revokeKey: id => dispatch(revokeKey(id)),
+    addToVault2: (secrets, entries, key) =>
+      dispatch(addToVault2(secrets, entries, key)),
   })
 )(Keys);

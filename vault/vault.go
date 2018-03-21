@@ -94,42 +94,60 @@ func DeleteByTitleHandler(c echo.Context) error {
 	return c.String(http.StatusOK, c.Param("title"))
 }
 
+// put puts to vault. If any entry doesnt have a version, the old version will be bumped,
+// but all titles must be the same to get the old version
 func put(ctx context.Context, entries []Entry, userKey *datastore.Key) ([]*datastore.Key, error) {
 	// make sure the titles are all the same
 	if len(entries) == 0 {
 		return nil, errors.New("Cant put no entries")
 	}
-	title := entries[0].Title
+
+	// check if any version is not defined
+	needsVersionBump := false
 	for _, entry := range entries {
-		if entry.Title != title {
-			return nil, errors.New("All entries must have the same title")
+		if entry.Version < 1 {
+			needsVersionBump = true
 		}
 	}
 
-	// get existing entries to bump the version
-	existing, err := GetByTitle(ctx, title, userKey)
-	if err != nil {
-		return nil, err
-	}
+	if needsVersionBump {
+		// ensure all entries have the same title
+		title := entries[0].Title
+		for _, entry := range entries {
+			if entry.Title != title {
+				return nil, errors.New("All entries must have the same title")
+			}
+		}
 
-	nextVersion := 1
-	for _, entry := range existing {
-		if entry.Version >= nextVersion {
-			nextVersion = entry.Version + 1
+		// get existing entries to bump the version
+		existing, err := GetByTitle(ctx, title, userKey)
+		if err != nil {
+			return nil, err
+		}
+
+		// set the next version
+		nextVersion := 1
+		for _, entry := range existing {
+			if entry.Version >= nextVersion {
+				nextVersion = entry.Version + 1
+			}
+		}
+		for idx := range entries {
+			entries[idx].Version = nextVersion
 		}
 	}
+
 	keys := []*datastore.Key{}
 	for idx := range entries {
 		if !entries[idx].Key.Parent().Equal(userKey) {
 			return nil, errors.New("Key must be the id of a key owned by you")
 		}
 
-		entries[idx].Version = nextVersion
 		entries[idx].Created = time.Now()
 		keys = append(keys, datastore.NewIncompleteKey(ctx, entryEntityType, entries[idx].Key))
 	}
 
-	keys, err = datastore.PutMulti(ctx, keys, entries)
+	keys, err := datastore.PutMulti(ctx, keys, entries)
 	if err != nil {
 		log.Errorf(ctx, "Error putting to vault: %+v", err)
 		return nil, err

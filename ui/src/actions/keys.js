@@ -76,7 +76,7 @@ export function addKeys(keys) {
 
     let headers = new Headers();
     headers.append("Content-Type", "application/json");
-    fetch("/api/keys", {
+    return fetch("/api/keys", {
       credentials: "same-origin",
       method: "POST",
       body: JSON.stringify(keys),

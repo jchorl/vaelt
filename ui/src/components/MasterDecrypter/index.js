@@ -21,7 +21,9 @@ class MasterDecrypter extends Component {
     decrypt: PropTypes.func.isRequired,
     decryptState: ImmutablePropTypes.mapOf(
       ImmutablePropTypes.contains({
-        yubikeyTapRequired: PropTypes.bool,
+        yubikeyTap: ImmutablePropTypes.contains({
+          timestamp: PropTypes.number.isRequired,
+        }),
         error: ImmutablePropTypes.contains({
           message: PropTypes.string.isRequired,
         }),
@@ -45,7 +47,7 @@ class MasterDecrypter extends Component {
         }).isRequired
       ).isRequired,
     }).isRequired,
-    setPlaintexts: PropTypes.func.isRequired,
+    setPlaintexts: PropTypes.func.isRequired, // the resulting plaintexts and their corresponding vault entries are passed to this as params
     setCiphertext: PropTypes.func,
   };
 
@@ -72,10 +74,16 @@ class MasterDecrypter extends Component {
     }
 
     if (
-      !this.props.decryptState.getIn([this.id, "yubikeyTapRequired"]) &&
-      nextProps.decryptState.getIn([this.id, "yubikeyTapRequired"])
+      this.props.decryptState.getIn([this.id, "yubikeyTap", "timestamp"]) !==
+      nextProps.decryptState.getIn([this.id, "yubikeyTap", "timestamp"])
     ) {
-      this.transitionTo(TAP_REQUIRED)();
+      this.transitionTo(TAP_REQUIRED)({
+        yubikeyTapTimestamp: nextProps.decryptState.getIn([
+          this.id,
+          "yubikeyTap",
+          "timestamp",
+        ]),
+      });
       return;
     }
 
@@ -142,35 +150,21 @@ class MasterDecrypter extends Component {
 
     // this is guaranteed to get at least one ciphertext from each title
     // because of the way the keys were chosen
-    const ciphertexts = entries
+    const filteredEntries = entries
       .valueSeq()
       .flatten(1)
-      .filter(e => e.get("key") === key.get("id"))
-      .map(e => e.get("encryptedMessage"));
+      .filter(e => e.get("key") === key.get("id"));
+    const ciphertexts = filteredEntries.map(e => e.get("encryptedMessage"));
 
+    let plaintexts;
     try {
-      // if the key is a yubikey key, then the keys must be decrypted in serial
-      if (key.get("device") === "yubikey") {
-        // TODO check what happens when many things should be decrypted
-        // might want to find a way to select the device once
-        const plaintexts = await Promise.all(
-          ciphertexts.map(ciphertext =>
-            decrypt(key, ciphertext, secret, this.id)
-          )
-        );
-        setPlaintexts(plaintexts);
-      } else {
-        const plaintexts = await Promise.all(
-          ciphertexts.map(ciphertext =>
-            decrypt(key, ciphertext, secret, this.id)
-          )
-        );
-        setPlaintexts(plaintexts);
-      }
+      plaintexts = await decrypt(key, ciphertexts, secret, this.id);
     } catch (e) {
       // this should have been handled already in the action creator
       console.error(e);
+      throw e;
     }
+    setPlaintexts(plaintexts, filteredEntries);
   };
 
   handleInputChange = event => {
@@ -205,7 +199,7 @@ class MasterDecrypter extends Component {
   };
 
   render() {
-    const { state, key, pin, password } = this.state;
+    const { state, key, pin, password, yubikeyTapTimestamp } = this.state;
     const { decryptState } = this.props;
 
     const encryptingKeys = this.getEncryptingKeys();
@@ -278,7 +272,7 @@ class MasterDecrypter extends Component {
           <div className="tapRequired">
             <div className="textAndTimer">
               Tap your Yubikey
-              <CircularTimer />
+              <CircularTimer key={yubikeyTapTimestamp} />
             </div>
           </div>
         ) : null}
