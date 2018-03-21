@@ -145,6 +145,7 @@ class Decrypt extends Component {
     const { hideContainer } = this.props;
 
     // TODO fix issue of switching between entries
+    // also impacts timeout
     return (
       <div
         className={classNames("vaultEntryDecrypt", {

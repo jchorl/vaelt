@@ -49,13 +49,6 @@ export function fetchAllFromVaultIfNeeded() {
   };
 }
 
-export const ADD_TO_VAULT_REQUEST = "ADD_TO_VAULT_REQUEST";
-function addToVaultRequest() {
-  return {
-    type: ADD_TO_VAULT_REQUEST,
-  };
-}
-
 export const ADD_TO_VAULT_SUCCESS = "ADD_TO_VAULT_SUCCESS";
 function addToVaultSuccess(entries) {
   return {
@@ -65,20 +58,11 @@ function addToVaultSuccess(entries) {
   };
 }
 
-export const ADD_TO_VAULT_FAILURE = "ADD_TO_VAULT_FAILURE";
-function addToVaultFailure(error) {
+export const NEW_VAULT_ENTRY_FAILURE = "NEW_VAULT_ENTRY_FAILURE";
+function newVaultEntryFailure(error) {
   return {
-    type: ADD_TO_VAULT_FAILURE,
+    type: NEW_VAULT_ENTRY_FAILURE,
     error,
-  };
-}
-
-export const UPDATE_VAULT_SUCCESS = "UPDATE_VAULT_SUCCESS";
-function updateVaultSuccess(entries) {
-  return {
-    type: UPDATE_VAULT_SUCCESS,
-    entries,
-    receivedAt: Date.now(),
   };
 }
 
@@ -90,85 +74,6 @@ function updateVaultFailure(error) {
   };
 }
 
-// TODO make this support batching
-export function addToVault(title, secret, isUpdate) {
-  return async function(dispatch, getState) {
-    dispatch(addToVaultRequest());
-
-    const failureHandler = isUpdate ? updateVaultFailure : addToVaultFailure;
-    const successHandler = isUpdate ? updateVaultSuccess : addToVaultSuccess;
-
-    // if they are trying to add a duplicate, tell them to update it
-    if (!isUpdate && getState().vault.hasIn(["entries", title])) {
-      const m = Map({
-        message:
-          "Cannot add an entry with the same title. Please update the entry instead.",
-      });
-      dispatch(failureHandler(m));
-      return Promise.reject(m);
-    }
-
-    // fetch all public keys
-    try {
-      await dispatch(fetchKeysIfNeeded());
-    } catch (err) {
-      dispatch(failureHandler(err));
-      return Promise.reject(err);
-    }
-    const publicKeys = getState()
-      .keys.get("keys")
-      .filter(k => k.get("type") === "public");
-
-    // encrypt the secret with all public keys
-    // some keys might require fetching by URL
-    let entries;
-    try {
-      entries = await Promise.all(
-        publicKeys.map(key => {
-          if (!!key.get("url")) {
-            return dispatch(
-              fetchArmoredKeyByURL(key.get("id"), key.get("url"))
-            ).then(
-              armoredKey => encrypt(secret, key.get("id"), armoredKey),
-              err => Promise.reject(err)
-            );
-          }
-          return encrypt(secret, key.get("id"), key.get("armoredKey"));
-        })
-      );
-    } catch (err) {
-      // give meaningful error when keys are invalid
-      const name = publicKeys
-        .find(k => k.get("id") === err.get("key"))
-        .get("name");
-      const m = err.update(
-        "message",
-        message =>
-          `Failed to encrypt using key "${name}". Consider checking that the key is valid. Error message: ${message}`
-      );
-      dispatch(failureHandler(m));
-      return Promise.reject(m);
-    }
-
-    // set the titles
-    entries = entries.map(entry => entry.set("title", title));
-
-    // post the new ciphertexts
-    let headers = new Headers();
-    headers.append("Accept", "application/json");
-    headers.append("Content-Type", "application/json");
-    return fetch("/api/vault", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: headers,
-      body: JSON.stringify(entries),
-    }).then(
-      jsonResponse(dispatch, successHandler, failureHandler),
-      reqFailure(dispatch, failureHandler)
-    );
-  };
-}
-
 export const REENCRYPTION_FAILURE = "REENCRYPTION_FAILURE";
 function reencryptionFailure(error) {
   return {
@@ -177,31 +82,135 @@ function reencryptionFailure(error) {
   };
 }
 
-// TODO merge with above function
-export function addToVault2(secrets, oldEntries, key) {
-  return async function(dispatch) {
-    const failureHandler = reencryptionFailure;
+export function newVaultEntry(title, secret) {
+  return async function(dispatch, getState) {
+    // make sure the entry is not a duplicate title
+    if (getState().vault.hasIn(["entries", title])) {
+      const m = Map({
+        message:
+          "Cannot add an entry with the same title. Please update the entry instead.",
+      });
+      dispatch(newVaultEntryFailure(m));
+      return Promise.reject(m);
+    }
 
-    let armoredKey = key.get("armoredKey");
-    let newEntries;
-    console.log("calling addToVault2");
+    // fetch all the public keys
     try {
-      if (!!key.get("url")) {
-        armoredKey = await dispatch(
-          fetchArmoredKeyByURL(key.get("id"), key.get("url"))
-        );
-      }
-      newEntries = List(
+      await dispatch(fetchKeysIfNeeded());
+    } catch (err) {
+      dispatch(newVaultEntryFailure(err));
+      return Promise.reject(err);
+    }
+
+    // filter for public keys
+    const publicKeys = getState()
+      .keys.get("keys")
+      .filter(k => k.get("type") === "public");
+
+    // do the encryption and add to vault
+    return dispatch(
+      addToVault(
+        List([secret]), // secrets
+        List([title]), // titles
+        List(), // versions
+        publicKeys, // keys to encrypt with
+        addToVaultSuccess,
+        newVaultEntryFailure
+      )
+    );
+  };
+}
+
+export function updateVaultEntry(title, secret) {
+  return async function(dispatch, getState) {
+    // fetch all the public keys
+    try {
+      await dispatch(fetchKeysIfNeeded());
+    } catch (err) {
+      dispatch(updateVaultFailure(err));
+      return Promise.reject(err);
+    }
+
+    // filter for public keys
+    const publicKeys = getState()
+      .keys.get("keys")
+      .filter(k => k.get("type") === "public");
+
+    // do the encryption and add to vault
+    return dispatch(
+      addToVault(
+        List([secret]), // secrets
+        List([title]), // titles
+        List(), // versions
+        publicKeys, // keys to encrypt with
+        addToVaultSuccess,
+        updateVaultFailure
+      )
+    );
+  };
+}
+
+export function reencryptWithNewKey(secrets, oldEntries, key) {
+  // just proxy the request
+  return addToVault(
+    secrets, // secrets
+    oldEntries.map(e => e.get("title")), // titles
+    oldEntries.map(e => e.get("version")), // versions
+    List([key]), // keys to encrypt with
+    addToVaultSuccess,
+    reencryptionFailure
+  );
+}
+
+// secrets, titles, and versions should be equal lengths.
+// it is fine to pass an empty list for versions, and latest will be used.
+// each (s, t, v) row will be encrypted with all keys (cartesian product).
+function addToVault(
+  secrets,
+  titles,
+  versions,
+  keys,
+  successHandler,
+  failureHandler
+) {
+  return async function(dispatch) {
+    // convert all URL keys to armored keys, so they dont get repeatedly requested in the cartesian product
+    let armoredKeys;
+    try {
+      armoredKeys = List(
         await Promise.all(
-          secrets.map(secret => encrypt(secret, key.get("id"), armoredKey))
+          keys.map(
+            k =>
+              !!k.get("armoredKey")
+                ? k
+                : dispatch(fetchArmoredKeyByURL(k.get("id"), k.get("url")))
+          )
         )
       );
     } catch (err) {
+      const name = keys.find(k => k.get("id") === err.get("key")).get("name");
+      const m = err.update(
+        "message",
+        message =>
+          `Failed to fetch key "${name}". Consider checking that the key URL is valid. Error message: ${message}`
+      );
+      dispatch(failureHandler(m));
+      throw m;
+    }
+
+    let newEntries;
+    const encryptionPromises = cartesian(
+      secrets.zipAll(titles, versions),
+      armoredKeys
+    ).map(([[secret, title, version], key]) =>
+      encrypt(secret, key, title, version)
+    );
+    try {
+      newEntries = List(await Promise.all(encryptionPromises));
+    } catch (err) {
       // give meaningful error when keys are invalid
-      // TODO const name = publicKeys
-      //   .find(k => k.get("id") === err.get("key"))
-      //   .get("name");
-      const name = key.get("name");
+      console.error(err);
+      const name = keys.find(k => k.get("id") === err.get("key")).get("name");
       const m = err.update(
         "message",
         message =>
@@ -210,14 +219,6 @@ export function addToVault2(secrets, oldEntries, key) {
       dispatch(failureHandler(m));
       throw m;
     }
-
-    newEntries = newEntries
-      .zip(oldEntries)
-      .map(([newEntry, oldEntry]) =>
-        newEntry
-          .set("title", oldEntry.get("title"))
-          .set("version", oldEntry.get("version"))
-      );
 
     // post the new ciphertexts
     let headers = new Headers();
@@ -301,4 +302,8 @@ export function deleteByTitle(taskID, title) {
       reqFailure(dispatch, deleteByTitleFailure.bind(undefined, taskID))
     );
   };
+}
+
+function cartesian(A, B) {
+  return A.map(a => B.map(b => [a, b])).flatten(1);
 }

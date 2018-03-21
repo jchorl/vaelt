@@ -4,8 +4,7 @@ import {
   FETCH_VAULT_ALL_SUCCESS,
   FETCH_VAULT_ALL_FAILURE,
   ADD_TO_VAULT_SUCCESS,
-  ADD_TO_VAULT_FAILURE,
-  UPDATE_VAULT_SUCCESS,
+  NEW_VAULT_ENTRY_FAILURE,
   UPDATE_VAULT_FAILURE,
   DELETE_BY_TITLE_REQUEST,
   DELETE_BY_TITLE_SUCCESS,
@@ -22,7 +21,6 @@ export default function vault(state = defaultState, action) {
   switch (action.type) {
     case FETCH_VAULT_ALL_REQUEST:
       return state.set("isFetching", true);
-    case UPDATE_VAULT_SUCCESS:
     case ADD_TO_VAULT_SUCCESS:
       state = state
         .set("lastAdded", action.entries.get(0).get("title"))
@@ -59,7 +57,7 @@ export default function vault(state = defaultState, action) {
       return state.setIn([action.taskID, "error"], action.error);
     case FETCH_VAULT_ALL_FAILURE:
       return defaultState.set("error", action.error);
-    case ADD_TO_VAULT_FAILURE:
+    case NEW_VAULT_ENTRY_FAILURE:
       return state.set("error", action.error);
     case UPDATE_VAULT_FAILURE:
       return state.set("updateError", action.error);

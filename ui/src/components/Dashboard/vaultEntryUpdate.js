@@ -2,12 +2,12 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ImmutablePropTypes from "react-immutable-proptypes";
-import { addToVault } from "../../actions/vault";
+import { updateVaultEntry } from "../../actions/vault";
 import "./newVaultEntry.css";
 
 class VaultEntryUpdate extends Component {
   static propTypes = {
-    addToVault: PropTypes.func.isRequired,
+    updateVaultEntry: PropTypes.func.isRequired,
     title: PropTypes.string.isRequired,
     vault: ImmutablePropTypes.contains({
       error: ImmutablePropTypes.contains({
@@ -39,7 +39,7 @@ class VaultEntryUpdate extends Component {
 
     const { title } = this.props;
     const { secret } = this.state;
-    this.props.addToVault(title, secret).then(() => {
+    this.props.updateVaultEntry(title, secret).then(() => {
       this.setState({
         secret: "",
       });
@@ -77,6 +77,7 @@ class VaultEntryUpdate extends Component {
 export default connect(
   state => ({ vault: state.vault }),
   dispatch => ({
-    addToVault: (title, secret) => dispatch(addToVault(title, secret, true)),
+    updateVaultEntry: (title, secret) =>
+      dispatch(updateVaultEntry(title, secret)),
   })
 )(VaultEntryUpdate);

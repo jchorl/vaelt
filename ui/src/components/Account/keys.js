@@ -9,7 +9,10 @@ import {
   fetchKeyByID,
   revokeKey,
 } from "../../actions/keys";
-import { fetchAllFromVaultIfNeeded, addToVault2 } from "../../actions/vault";
+import {
+  fetchAllFromVaultIfNeeded,
+  reencryptWithNewKey,
+} from "../../actions/vault";
 import { getPublicKey } from "../../yubikey";
 import MasterDecrypter from "../MasterDecrypter";
 import HelpPopup from "../HelpPopup";
@@ -172,9 +175,11 @@ class Keys extends Component {
   };
 
   setPlaintexts = (plaintexts, entries) => {
-    const { addToVault2 } = this.props;
+    const { reencryptWithNewKey } = this.props;
     const { newKey } = this.state;
-    addToVault2(plaintexts, entries, newKey).then(this.transitionTo(NONE));
+    reencryptWithNewKey(plaintexts, entries, newKey).then(
+      this.transitionTo(NONE)
+    );
   };
 
   revoke = id => () => {
@@ -518,7 +523,7 @@ export default connect(
     fetchKeyByID: id => dispatch(fetchKeyByID(id)),
     addKeys: keys => dispatch(addKeys(keys)),
     revokeKey: id => dispatch(revokeKey(id)),
-    addToVault2: (secrets, entries, key) =>
-      dispatch(addToVault2(secrets, entries, key)),
+    reencryptWithNewKey: (secrets, entries, key) =>
+      dispatch(reencryptWithNewKey(secrets, entries, key)),
   })
 )(Keys);

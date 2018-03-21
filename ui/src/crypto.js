@@ -21,31 +21,37 @@ export async function generateKeyPair(email, passphrase) {
   return openpgp.generateKey(options);
 }
 
-export async function encrypt(secret, keyID, armoredKey) {
+export async function encrypt(secret, encryptingKey, title, version) {
   const options = {
     data: secret,
-    publicKeys: key.readArmored(armoredKey).keys,
+    publicKeys: key.readArmored(encryptingKey.get("armoredKey")).keys,
   };
 
   const encryptedMessage = await openpgp.encrypt(options).then(
     ciphertext => ciphertext.data,
     err => {
       console.error(err);
-      const m = Map({ message: err.message, key: keyID });
+      const m = Map({ message: err.message, key: encryptingKey.get("id") });
       return Promise.reject(m);
     }
   );
 
   return Map({
     encryptedMessage,
-    key: keyID,
+    key: encryptingKey.get("id"),
+    title,
+    version,
   });
 }
 
-export async function decryptUsingSessionKey(ciphertext, key, algorithm) {
+export async function decryptUsingSessionKey(
+  ciphertext,
+  decryptionKey,
+  algorithm
+) {
   let msg = message.readArmored(ciphertext);
   let sessionKey = {
-    data: key,
+    data: decryptionKey,
     algorithm,
   };
   return msg
