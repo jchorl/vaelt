@@ -66,7 +66,11 @@ class PreviousVersions extends Component {
             </div>
             {open.contains(v) ? (
               <div className="decrypt">
-                <VaultEntryDecrypt title={title} version={v} />
+                <VaultEntryDecrypt
+                  title={title}
+                  version={v}
+                  hideContainer={true}
+                />
               </div>
             ) : null}
           </div>

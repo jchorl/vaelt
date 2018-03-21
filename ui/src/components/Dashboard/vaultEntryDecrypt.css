@@ -1,23 +1,3 @@
-.vaultEntryDecrypt .secretForm {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.vaultEntryDecrypt .tapRequired {
-  --timer-background: var(--light-grey);
-  --duration: 10s;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.vaultEntryDecrypt .textAndTimer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
 .vaultEntryDecrypt .decryptedContainer .copyButton, .vaultEntryDecrypt .ciphertextContainer .copyButton {
   padding: 5px;
   font-size: 1.1em;
@@ -33,12 +13,8 @@
   min-height: 5em;
 }
 
-.vaultEntryDecrypt #ciphertextText {
+.vaultEntryDecrypt .ciphertextText {
   background: white;
   min-width: 40em;
   min-height: 20em;
-}
-
-.vaultEntry .errorText {
-  margin-top: 20px;
 }

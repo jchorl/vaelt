@@ -3,13 +3,11 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ImmutablePropTypes from "react-immutable-proptypes";
 import { addToVault } from "../../actions/vault";
-import { fetchKeysForVaultEntry } from "../../actions/keys";
 import "./newVaultEntry.css";
 
 class VaultEntryUpdate extends Component {
   static propTypes = {
     addToVault: PropTypes.func.isRequired,
-    fetchKeysForVaultEntry: PropTypes.func.isRequired,
     title: PropTypes.string.isRequired,
     vault: ImmutablePropTypes.contains({
       error: ImmutablePropTypes.contains({
@@ -41,23 +39,11 @@ class VaultEntryUpdate extends Component {
 
     const { title } = this.props;
     const { secret } = this.state;
-    this.props
-      .addToVault(title, secret)
-      .then(() => {
-        // need to fetch the keys so the decryption ui will be updated
-        const { title, fetchKeysForVaultEntry, vault } = this.props;
-
-        const keyKeys = vault
-          .getIn(["entries", title])
-          .map(e => e.get("key"))
-          .toSet();
-        return fetchKeysForVaultEntry(title, keyKeys);
-      })
-      .then(() => {
-        this.setState({
-          secret: "",
-        });
+    this.props.addToVault(title, secret).then(() => {
+      this.setState({
+        secret: "",
       });
+    });
   };
 
   render() {
@@ -92,7 +78,5 @@ export default connect(
   state => ({ vault: state.vault }),
   dispatch => ({
     addToVault: (title, secret) => dispatch(addToVault(title, secret, true)),
-    fetchKeysForVaultEntry: (title, keyKeys) =>
-      dispatch(fetchKeysForVaultEntry(title, keyKeys)),
   })
 )(VaultEntryUpdate);

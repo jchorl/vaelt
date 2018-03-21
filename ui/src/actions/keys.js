@@ -129,66 +129,6 @@ export function revokeKey(id) {
   };
 }
 
-export const FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST =
-  "FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST";
-function requestKeysForVaultEntry() {
-  return {
-    type: FETCH_KEYS_FOR_VAULT_ENTRY_REQUEST,
-  };
-}
-
-export const FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS =
-  "FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS";
-function receiveKeysForVaultEntrySuccess(title, keys) {
-  return {
-    type: FETCH_KEYS_FOR_VAULT_ENTRY_SUCCESS,
-    title,
-    keys,
-  };
-}
-
-export const FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE =
-  "FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE";
-function receiveKeysForVaultEntryFailure(error) {
-  return {
-    type: FETCH_KEYS_FOR_VAULT_ENTRY_FAILURE,
-    error,
-  };
-}
-
-export function fetchKeysForVaultEntryIfNeeded(title, keyKeys) {
-  return function(dispatch, getState) {
-    if (getState().vault.hasIn(["titleToKeys", title])) {
-      return Promise.resolve();
-    }
-
-    return dispatch(fetchKeysForVaultEntry(title, keyKeys));
-  };
-}
-
-export function fetchKeysForVaultEntry(title, keyKeys) {
-  return function(dispatch) {
-    dispatch(requestKeysForVaultEntry());
-
-    let keysURL = new URL("/api/keys", window.location);
-    keyKeys.forEach(k => keysURL.searchParams.append("key", k));
-    let headers = new Headers();
-    headers.append("Accept", "application/json");
-    return fetch(keysURL, {
-      credentials: "same-origin",
-      method: "GET",
-      headers,
-    }).then(
-      jsonResponse(
-        dispatch,
-        receiveKeysForVaultEntrySuccess.bind(undefined, title), // bind the title because its not included in the resp
-        receiveKeysForVaultEntryFailure
-      ),
-      reqFailure(dispatch, receiveKeysForVaultEntryFailure)
-    );
-  };
-}
-
 export const FETCH_KEY_BY_ID_REQUEST = "FETCH_KEY_BY_ID_REQUEST";
 function requestKeyByID() {
   return {
