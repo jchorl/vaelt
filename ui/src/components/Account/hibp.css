@@ -1,0 +1,11 @@
+.hibp .pleaseDecrypt {
+  margin-bottom: 20px;
+}
+
+.hibp .errorText {
+  margin-top: 20px;
+}
+
+.hibp .danger {
+  color: red;
+}

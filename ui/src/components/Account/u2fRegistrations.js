@@ -80,7 +80,7 @@ class U2fRegistrations extends Component {
     const { u2fEnforced } = this.state;
 
     return (
-      <div className="u2fRegistrations">
+      <div className="u2fRegistrations section">
         <h2>Two-Factor Auth</h2>
         <div className="u2fToggle">
           <div className="u2fEnabledText">Enabled:</div>

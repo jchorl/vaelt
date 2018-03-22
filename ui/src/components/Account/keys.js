@@ -257,7 +257,7 @@ class Keys extends Component {
 
     // TODO add a help section specifying how to set up a yubikey
     return (
-      <div className="keys">
+      <div className="keys section">
         <h2>Keys</h2>
         <div className="greyContainer">
           <div className="table">

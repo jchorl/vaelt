@@ -11,7 +11,9 @@ export function jsonResponse(dispatch, success, failure) {
           return fromJS(json);
         },
         error => {
-          const m = Map({ message: error.message });
+          const m = Map({
+            message: error.message || "An unknown error occurred",
+          });
           if (failure) {
             dispatch(failure(m));
           }
@@ -29,7 +31,7 @@ export function jsonResponse(dispatch, success, failure) {
         }
         return Promise.reject(m);
       } catch (e) {
-        const m = Map({ message: text });
+        const m = Map({ message: text || "An unknown error occurred" });
         if (failure) {
           dispatch(failure(m));
         }
@@ -50,7 +52,9 @@ export function stringResponse(dispatch, success, failure) {
           return text;
         },
         error => {
-          const m = Map({ message: error.message });
+          const m = Map({
+            message: error.message || "An unknown error occurred",
+          });
           if (failure) {
             dispatch(failure(m));
           }
@@ -68,7 +72,7 @@ export function stringResponse(dispatch, success, failure) {
         }
         return Promise.reject(m);
       } catch (e) {
-        const m = Map({ message: text });
+        const m = Map({ message: text || "An unknown error occured" });
         if (failure) {
           dispatch(failure(m));
         }
@@ -88,7 +92,9 @@ export function noContentResponse(dispatch, success, failure) {
           }
         },
         error => {
-          let m = Map({ message: error.message });
+          let m = Map({
+            message: error.message || "An unknown error occurred",
+          });
           if (failure) {
             dispatch(failure(m));
           }
@@ -106,7 +112,7 @@ export function noContentResponse(dispatch, success, failure) {
         }
         return Promise.reject(m);
       } catch (e) {
-        const m = Map({ message: text });
+        const m = Map({ message: text || "An unknown error occurred" });
         if (failure) {
           dispatch(failure(m));
         }
@@ -118,7 +124,7 @@ export function noContentResponse(dispatch, success, failure) {
 
 export function reqFailure(dispatch, failure) {
   return function(error) {
-    const m = Map({ message: error.message });
+    const m = Map({ message: error.message || "An unknown error occurred" });
     if (failure) {
       dispatch(failure(m));
     }
