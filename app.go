@@ -23,6 +23,7 @@ func init() {
 	usersGroup.GET("", users.GetUserHandler, auth.AuthReadMiddlewares...)
 	usersGroup.POST("/login", users.LoginHandler, auth.AuthWriteFallBackToReadMiddlewares...)
 	usersGroup.GET("/verify/:userKey", users.VerifyUserHandler, sessions.SessionsMiddleware, sessions.SessionProcessingMiddleware)
+	usersGroup.POST("/verify/resend", users.ResendVerificationHandler, auth.AuthReadMiddlewares...)
 
 	vaultGroup := e.Group("/api/vault")
 	vaultGroup.POST("", vault.PostHandler, auth.AuthWriteMiddlewares...)

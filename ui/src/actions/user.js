@@ -46,6 +46,37 @@ export function fetchUserIfNeeded() {
   };
 }
 
+export const RESEND_VERIFICATION_SUCCESS = "RESEND_VERIFICATION_SUCCESS";
+function resendVerificationSuccess() {
+  return {
+    type: RESEND_VERIFICATION_SUCCESS,
+  };
+}
+
+export const RESEND_VERIFICATION_FAILURE = "RESEND_VERIFICATION_FAILURE";
+function resendVerificationFailure(error) {
+  return {
+    type: RESEND_VERIFICATION_FAILURE,
+    error,
+  };
+}
+
+export function resendVerificationEmail() {
+  return function(dispatch) {
+    return fetch("/api/users/verify/resend", {
+      method: "POST",
+      credentials: "same-origin",
+    }).then(
+      noContentResponse(
+        dispatch,
+        resendVerificationSuccess,
+        resendVerificationFailure
+      ),
+      reqFailure(dispatch, resendVerificationFailure)
+    );
+  };
+}
+
 export const FETCH_LOGOUT_REQUEST = "FETCH_LOGOUT_REQUEST";
 function requestLogout() {
   return {

@@ -1,0 +1,17 @@
+.unverifiedBar {
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--orange);
+}
+
+.unverifiedBar .resendButton {
+  padding: 5px 10px;
+  margin-left: 20px;
+}
+
+.unverifiedBar .resendIcon {
+  margin: 0 10px;
+  line-height: 30px;
+}

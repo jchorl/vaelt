@@ -90,8 +90,6 @@ func RegisterHandler(c echo.Context) error {
 	// request a verification email
 	err = requestVerification(c, userKey, email)
 	if err != nil {
-		log.Errorf(ctx, "Error sending verification email to user: %+v", err)
-
 		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email. You can log in, but will have limited access until you verify your account. You can log in to request another verification email.")
 	}
 
@@ -119,6 +117,26 @@ func GetUserHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, user)
+}
+
+// ResendVerificationHandler resends the users verification email
+func ResendVerificationHandler(c echo.Context) error {
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	user, err := GetUserByKey(c, userKey)
+	if err != nil {
+		return err
+	}
+
+	err = requestVerification(c, userKey, user.Email)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email")
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 // AuthUserByUsernamePassword auths a user and returns their user key

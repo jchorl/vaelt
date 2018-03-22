@@ -12,6 +12,7 @@ body {
   --very-light-blue: #E3F0FD;
   --purple: #B18FCF;
   --light-purple: #D8D8F6;
+  --orange: #F9CC79;
 
   color: var(--dark-blue);
 }

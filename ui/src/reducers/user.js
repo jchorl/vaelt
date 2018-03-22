@@ -6,6 +6,8 @@ import {
   FETCH_USER_REQUEST,
   FETCH_USER_SUCCESS,
   FETCH_USER_FAILURE,
+  RESEND_VERIFICATION_SUCCESS,
+  RESEND_VERIFICATION_FAILURE,
 } from "../actions/user";
 import { FETCH_SIGN_FINISH_SUCCESS, REQUIRE_U2F_SUCCESS } from "../actions/u2f";
 
@@ -31,6 +33,10 @@ export default function user(state = defaultState, action) {
       return defaultState.set("error", action.error);
     case FETCH_LOGOUT_SUCCESS:
       return defaultState;
+    case RESEND_VERIFICATION_SUCCESS:
+      return state.set("resendVerificationSuccess", true);
+    case RESEND_VERIFICATION_FAILURE:
+      return state.set("resendVerificationSuccess", false);
     default:
       return state;
   }
