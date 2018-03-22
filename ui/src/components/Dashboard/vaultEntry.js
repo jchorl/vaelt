@@ -27,7 +27,7 @@ export default class Entry extends Component {
             <div>
               Update<HelpPopup message="This will encrypt secret contents with all of your public keys and add the new version to the vault." />
             </div>
-            <VaultEntryUpdate title={title} />
+            <VaultEntryUpdate key={title} title={title} />
           </div>
           <div className="section">
             <div>Previous Versions</div>

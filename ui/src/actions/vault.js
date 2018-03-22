@@ -1,6 +1,5 @@
 import { List, Map } from "immutable";
 import { jsonResponse, stringResponse, reqFailure } from "./parseResponse";
-import { fetchKeysIfNeeded } from "./keys";
 import { encrypt } from "../crypto";
 
 export const FETCH_VAULT_ALL_REQUEST = "FETCH_VAULT_ALL_REQUEST";
@@ -82,7 +81,7 @@ function reencryptionFailure(error) {
   };
 }
 
-export function newVaultEntry(title, secret) {
+export function newVaultEntry(title, secret, keys) {
   return async function(dispatch, getState) {
     // make sure the entry is not a duplicate title
     if (getState().vault.hasIn(["entries", title])) {
@@ -94,18 +93,8 @@ export function newVaultEntry(title, secret) {
       return Promise.reject(m);
     }
 
-    // fetch all the public keys
-    try {
-      await dispatch(fetchKeysIfNeeded());
-    } catch (err) {
-      dispatch(newVaultEntryFailure(err));
-      return Promise.reject(err);
-    }
-
     // filter for public keys
-    const publicKeys = getState()
-      .keys.get("keys")
-      .filter(k => k.get("type") === "public");
+    const publicKeys = keys.filter(k => k.get("type") === "public");
 
     // do the encryption and add to vault
     return dispatch(
@@ -121,20 +110,10 @@ export function newVaultEntry(title, secret) {
   };
 }
 
-export function updateVaultEntry(title, secret) {
+export function updateVaultEntry(title, secret, keys) {
   return async function(dispatch, getState) {
-    // fetch all the public keys
-    try {
-      await dispatch(fetchKeysIfNeeded());
-    } catch (err) {
-      dispatch(updateVaultFailure(err));
-      return Promise.reject(err);
-    }
-
     // filter for public keys
-    const publicKeys = getState()
-      .keys.get("keys")
-      .filter(k => k.get("type") === "public");
+    const publicKeys = keys.filter(k => k.get("type") === "public");
 
     // do the encryption and add to vault
     return dispatch(
@@ -174,6 +153,12 @@ function addToVault(
   failureHandler
 ) {
   return async function(dispatch) {
+    if (keys.isEmpty()) {
+      const m = Map({ message: "Cant encrypt with no keys provided" });
+      dispatch(failureHandler(m));
+      return Promise.reject(m);
+    }
+
     // convert all URL keys to armored keys, so they dont get repeatedly requested in the cartesian product
     let armoredKeys;
     try {
@@ -183,7 +168,10 @@ function addToVault(
             k =>
               !!k.get("armoredKey")
                 ? k
-                : dispatch(fetchArmoredKeyByURL(k.get("id"), k.get("url")))
+                : // fetch the key, and replace the url with the armored key
+                  dispatch(
+                    fetchArmoredKeyByURL(k.get("id"), k.get("url"))
+                  ).then(armoredKey => k.merge({ url: "", armoredKey }))
           )
         )
       );

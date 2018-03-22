@@ -146,10 +146,17 @@ class Keys extends Component {
   };
 
   addKeySuccess = resp => {
-    this.setState({
-      newKey: resp.keys.find(k => k.get("type") === "public"),
-      state: PROMPT_FOR_REENCRYPTION,
-    });
+    const { vaultEntries } = this.props;
+    if (!vaultEntries.isEmpty()) {
+      this.setState({
+        newKey: resp.keys.find(k => k.get("type") === "public"),
+        state: PROMPT_FOR_REENCRYPTION,
+      });
+    } else {
+      this.setState({
+        state: NONE,
+      });
+    }
   };
 
   transitionTo = state => () => {

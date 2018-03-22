@@ -68,9 +68,9 @@ class HIBP extends Component {
 
   render() {
     const { leaked, state } = this.state;
-    const { hibp } = this.props;
+    const { hibp, vaultEntries } = this.props;
 
-    return (
+    return !vaultEntries.isEmpty() ? (
       <div className="hibp section">
         <h2>
           Check for Password Leaks{" "}
@@ -120,7 +120,7 @@ class HIBP extends Component {
           </div>
         ) : null}
       </div>
-    );
+    ) : null;
   }
 }
 
