@@ -119,26 +119,6 @@ func GetUserHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
-// ResendVerificationHandler resends the users verification email
-func ResendVerificationHandler(c echo.Context) error {
-	userKey, ok := sessions.GetUserKeyFromContext(c)
-	if !ok {
-		return errors.New("Could not get user key from context")
-	}
-
-	user, err := GetUserByKey(c, userKey)
-	if err != nil {
-		return err
-	}
-
-	err = requestVerification(c, userKey, user.Email)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email")
-	}
-
-	return c.NoContent(http.StatusOK)
-}
-
 // AuthUserByUsernamePassword auths a user and returns their user key
 func AuthUserByUsernamePassword(req *http.Request) (*datastore.Key, error) {
 	ctx := appengine.NewContext(req)

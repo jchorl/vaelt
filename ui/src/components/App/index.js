@@ -4,6 +4,7 @@ import Nav from "./nav";
 import UnverifiedBar from "./unverifiedBar";
 import Splash from "./splash";
 import Dashboard from "../Dashboard";
+import Redirect from "../Redirect";
 import "./App.css";
 
 export default class App extends Component {
@@ -14,6 +15,7 @@ export default class App extends Component {
         <UnverifiedBar />
         <Route exact path="/" component={Splash} />
         <Route path="/dashboard" component={Dashboard} />
+        <Route path="/redirect/:link" component={Redirect} />
       </div>
     );
   }

@@ -1,8 +1,10 @@
 package users
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/SparkPost/gosparkpost"
 	"github.com/labstack/echo"
@@ -73,5 +75,26 @@ func VerifyUserHandler(c echo.Context) error {
 
 	// log the user out so they can log back in with their write scope
 	_ = sessions.ExpireSession(c)
-	return c.Redirect(http.StatusTemporaryRedirect, config.ApplicationID)
+
+	return c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("/redirect/%s", url.PathEscape("/")))
+}
+
+// ResendVerificationHandler resends the users verification email
+func ResendVerificationHandler(c echo.Context) error {
+	userKey, ok := sessions.GetUserKeyFromContext(c)
+	if !ok {
+		return errors.New("Could not get user key from context")
+	}
+
+	user, err := GetUserByKey(c, userKey)
+	if err != nil {
+		return err
+	}
+
+	err = requestVerification(c, userKey, user.Email)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Unfortunately we were unable to send you a verification email")
+	}
+
+	return c.NoContent(http.StatusOK)
 }

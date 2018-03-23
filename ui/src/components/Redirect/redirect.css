@@ -1,0 +1,8 @@
+.redirectPage {
+  display: flex;
+  justify-content: center;
+}
+
+.redirectPage .whiteContainer {
+  margin-top: 60px;
+}
